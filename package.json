@@ -1,0 +1,15 @@
+{
+  "name": "vision-platform",
+  "version": "1.0.0",
+  "description": "Vision - Instant IP and Room-Based Real-Time Messenger with WebRTC & Media Sharing",
+  "private": true,
+  "scripts": {
+    "postinstall": "npm install --prefix server && npm install --prefix client",
+    "build": "npm run build --prefix client",
+    "start": "node server/index.js",
+    "dev": "node server/index.js"
+  },
+  "keywords": ["vision", "messenger", "webrtc", "socketio", "realtime-chat"],
+  "author": "Vision",
+  "license": "MIT"
+}
