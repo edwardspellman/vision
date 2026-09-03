@@ -5,17 +5,19 @@ import {
   Share2, 
   ChevronDown, 
   Upload, 
-  MessageSquare,
-  LogOut,
-  LogIn,
-  Phone,
-  Video,
-  Radio,
-  Settings,
-  Crown
+  MessageSquare, 
+  LogOut, 
+  LogIn, 
+  Phone, 
+  Video, 
+  Radio, 
+  Settings, 
+  Crown,
+  User
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useWebRTC } from '../context/WebRTCContext';
+import { getAvatarSvg } from '../utils/avatar';
 import MessageItem from './MessageItem';
 
 export default function ChatArea({ 
