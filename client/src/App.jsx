@@ -5,14 +5,12 @@ import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
 import MessageInput from './components/MessageInput';
-import MobileNavBar from './components/MobileNavBar';
 import RoomModal from './components/RoomModal';
 import ShareModal from './components/ShareModal';
 import PasswordModal from './components/PasswordModal';
 import SettingsModal from './components/SettingsModal';
 import RoomSettingsModal from './components/RoomSettingsModal';
-import RoomCallModal from './components/RoomCallModal';
-import VideoCallModal from './components/VideoCallModal';
+import BetaNoticeModal from './components/BetaNoticeModal';
 import ImageLightbox from './components/ImageLightbox';
 import InitialLoader from './components/InitialLoader';
 import AuthModal from './components/AuthModal';
@@ -26,6 +24,7 @@ function MainApp() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isBetaModalOpen, setIsBetaModalOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
   const [soundMuted, setSoundMuted] = useState(() => {
     return localStorage.getItem('vision_sound_muted') === 'true';
@@ -51,13 +50,14 @@ function MainApp() {
         <ProfileSetupModal />
       )}
 
-      {/* Top Header Navigation */}
+      {/* Top Header Navigation (Classy & Minimal on Mobile) */}
       <Header
         onOpenRoomModal={() => setIsRoomModalOpen(true)}
         onOpenRoomSettingsModal={() => setIsRoomSettingsModalOpen(true)}
         onOpenShareModal={() => setIsShareModalOpen(true)}
         onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        onOpenBetaModal={() => setIsBetaModalOpen(true)}
         soundMuted={soundMuted}
         setSoundMuted={setSoundMuted}
       />
@@ -69,6 +69,7 @@ function MainApp() {
             onOpenShareModal={() => setIsShareModalOpen(true)}
             onOpenRoomModal={() => setIsRoomModalOpen(true)}
             onOpenRoomSettingsModal={() => setIsRoomSettingsModalOpen(true)}
+            onOpenBetaModal={() => setIsBetaModalOpen(true)}
             onImageClick={(url) => setPreviewImage(url)}
           />
           <MessageInput />
@@ -80,15 +81,9 @@ function MainApp() {
           onOpenShareModal={() => setIsShareModalOpen(true)}
           onOpenRoomModal={() => setIsRoomModalOpen(true)}
           onOpenRoomSettingsModal={() => setIsRoomSettingsModalOpen(true)}
+          onOpenBetaModal={() => setIsBetaModalOpen(true)}
         />
       </div>
-
-      {/* Mobile Bottom Navigation Bar (iOS / Android) */}
-      <MobileNavBar
-        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-        onOpenRoomModal={() => setIsRoomModalOpen(true)}
-        onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
-      />
 
       {/* Security Modals & Telemetry Windows */}
       <RoomModal
@@ -115,9 +110,11 @@ function MainApp() {
         setSoundMuted={setSoundMuted}
       />
 
-      <VideoCallModal />
-
-      <RoomCallModal />
+      {/* Beta Notice Modal for Voice & Video Calling */}
+      <BetaNoticeModal
+        isOpen={isBetaModalOpen}
+        onClose={() => setIsBetaModalOpen(false)}
+      />
 
       <ImageLightbox
         imageUrl={previewImage}
