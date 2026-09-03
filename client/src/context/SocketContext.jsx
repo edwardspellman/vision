@@ -15,9 +15,9 @@ export function SocketProvider({ children }) {
   const [typingUsers, setTypingUsers] = useState([]);
   const [error, setError] = useState(null);
   
-  // Auth & Profile Setup State
+  // Auth & Profile Setup State (Instant access by default)
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem('vision_auth') === 'true';
+    return localStorage.getItem('vision_auth') !== 'false';
   });
   const [hasCompletedProfile, setHasCompletedProfile] = useState(() => {
     return localStorage.getItem('vision_profile_setup') === 'true';
