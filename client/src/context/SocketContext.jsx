@@ -124,6 +124,11 @@ export function SocketProvider({ children }) {
       );
     });
 
+    // Room Settings Real-time Update
+    socketInstance.on('room_settings_updated', (updatedRoom) => {
+      setCurrentRoom((prev) => (prev && prev.id === updatedRoom.id ? { ...prev, ...updatedRoom } : prev));
+    });
+
     setSocket(socketInstance);
 
     return () => {
@@ -248,15 +253,59 @@ export function SocketProvider({ children }) {
   };
 
   /**
+   * Leave the current room
+   */
+  const leaveRoom = () => {
+    if (!socket) return;
+
+    socket.emit('leave_room', () => {
+      // Remove hash from URL
+      if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      } else {
+        window.location.hash = '';
+      }
+
+      setMessages([]);
+      setRoomUsers([]);
+      setCurrentRoom(null);
+
+      // Gracefully fall back to local auto-network room
+      if (ipInfo?.autoRoom?.roomId) {
+        joinRoom(ipInfo.autoRoom.roomId, '', socket);
+      }
+    });
+  };
+
+  /**
    * Create a new Custom Room
    */
-  const createRoom = ({ roomId, name, password, isPrivate, maxUsers }) => {
+  const createRoom = ({ 
+    roomId, 
+    name, 
+    password, 
+    isPrivate, 
+    maxUsers,
+    allowAudioCalls = true,
+    allowVideoCalls = true,
+    allowMediaUploads = true
+  }) => {
     return new Promise((resolve) => {
       if (!socket) return resolve({ success: false, error: 'Socket link offline' });
 
       socket.emit(
         'create_room',
-        { roomId, name, password, isPrivate, maxUsers, user },
+        { 
+          roomId, 
+          name, 
+          password, 
+          isPrivate, 
+          maxUsers, 
+          user,
+          allowAudioCalls,
+          allowVideoCalls,
+          allowMediaUploads
+        },
         (response) => {
           if (response && response.success) {
             setCurrentRoom(response.room);
@@ -266,6 +315,28 @@ export function SocketProvider({ children }) {
             resolve({ success: true, room: response.room });
           } else {
             resolve({ success: false, error: response?.error || 'Room creation failed' });
+          }
+        }
+      );
+    });
+  };
+
+  /**
+   * Update Room Settings (Host Only)
+   */
+  const updateRoomSettings = (settings) => {
+    return new Promise((resolve) => {
+      if (!socket || !currentRoom) return resolve({ success: false, error: 'Socket offline or no active room' });
+
+      socket.emit(
+        'update_room_settings',
+        { roomId: currentRoom.id, settings },
+        (response) => {
+          if (response && response.success) {
+            setCurrentRoom((prev) => ({ ...prev, ...response.room }));
+            resolve({ success: true, room: response.room });
+          } else {
+            resolve({ success: false, error: response?.error || 'Failed to update settings' });
           }
         }
       );
@@ -341,7 +412,9 @@ export function SocketProvider({ children }) {
         logout,
         completeProfileSetup,
         joinRoom,
+        leaveRoom,
         createRoom,
+        updateRoomSettings,
         sendMessage,
         setTyping,
         toggleReaction,

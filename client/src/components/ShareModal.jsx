@@ -67,10 +67,10 @@ export default function ShareModal({ isOpen, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-fade-in font-mono select-none">
-      <div className="w-full max-w-md bg-[#080d17] rounded-2xl border border-[#1a263d] shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-sm animate-fade-in font-mono select-none">
+      <div className="w-full max-w-md max-h-[90dvh] bg-[#080d17] rounded-2xl border border-[#1a263d] shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-[#161f30] flex items-center justify-between bg-[#0a1120]">
+        <div className="px-5 py-3.5 sm:px-6 sm:py-4 border-b border-[#161f30] flex items-center justify-between bg-[#0a1120] shrink-0">
           <div className="flex items-center space-x-2">
             <Share2 className="w-4 h-4 text-[#00f0ff]" />
             <h3 className="font-bold text-sm text-zinc-100">
@@ -80,14 +80,14 @@ export default function ShareModal({ isOpen, onClose }) {
 
           <button
             onClick={onClose}
-            className="p-1 text-zinc-400 hover:text-white rounded transition"
+            className="p-1.5 text-zinc-400 hover:text-white rounded-lg transition active:scale-95"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-4">
+        <div className="p-4 sm:p-6 space-y-3.5 sm:space-y-4 overflow-y-auto scroll-touch flex-1">
           {/* QR Code Frame */}
           <div className="flex flex-col items-center justify-center p-4 bg-[#05080f] rounded-xl border border-[#161f30]">
             <div className="p-2 bg-[#00ff88] rounded-lg shadow-lg mb-2">
@@ -120,7 +120,7 @@ export default function ShareModal({ isOpen, onClose }) {
 
           {/* Password Notice */}
           {currentRoom.hasPassword && (
-            <div className="p-3 bg-[#ffb700]/10 border border-[#ffb700]/30 rounded-xl text-xs text-[#ffb700] flex items-center space-x-2.5">
+            <div className="p-3 bg-[#00f0ff]/10 border border-[#00f0ff]/30 rounded-xl text-xs text-[#00f0ff] flex items-center space-x-2.5">
               <Lock className="w-4 h-4 shrink-0" />
               <span>This room is password-protected. Share the password with friends so they can enter.</span>
             </div>

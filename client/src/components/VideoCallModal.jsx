@@ -158,10 +158,10 @@ export default function VideoCallModal() {
       </div>
 
       {/* Control Bar */}
-      <div className="h-16 bg-[#080d17] border-t border-[#161f30] flex items-center justify-center space-x-3 px-4 z-30 shrink-0">
+      <div className="min-h-[4.5rem] bg-[#080d17] border-t border-[#161f30] flex items-center justify-center space-x-3 px-4 z-30 shrink-0 pb-safe">
         <button
           onClick={toggleMic}
-          className={`p-3 rounded-full border transition ${
+          className={`p-3 rounded-full border transition active:scale-90 ${
             isMuted ? 'bg-[#ff3366] text-black border-[#ff3366]' : 'bg-[#05080f] text-zinc-300 border-[#1a263d] hover:border-[#00ff88]'
           }`}
           title={isMuted ? 'Unmute Microphone' : 'Mute Microphone'}
@@ -171,7 +171,7 @@ export default function VideoCallModal() {
 
         <button
           onClick={toggleCamera}
-          className={`p-3 rounded-full border transition ${
+          className={`p-3 rounded-full border transition active:scale-90 ${
             isCameraOff ? 'bg-[#ff3366] text-black border-[#ff3366]' : 'bg-[#05080f] text-zinc-300 border-[#1a263d] hover:border-[#00ff88]'
           }`}
           title={isCameraOff ? 'Turn Camera On' : 'Turn Camera Off'}
@@ -181,7 +181,7 @@ export default function VideoCallModal() {
 
         <button
           onClick={toggleScreenShare}
-          className={`p-3 rounded-full border transition ${
+          className={`p-3 rounded-full border transition active:scale-90 ${
             isScreenSharing ? 'bg-[#00f0ff] text-black border-[#00f0ff]' : 'bg-[#05080f] text-zinc-300 border-[#1a263d] hover:border-[#00f0ff]'
           }`}
           title={isScreenSharing ? 'Stop Screen Share' : 'Share Screen'}
@@ -191,7 +191,7 @@ export default function VideoCallModal() {
 
         <button
           onClick={endCall}
-          className="p-3 bg-[#ff3366] hover:bg-[#ff1a53] text-black rounded-full font-bold transition flex items-center space-x-1"
+          className="p-3 bg-[#ff3366] hover:bg-[#ff1a53] text-black rounded-full font-bold transition flex items-center space-x-1 active:scale-90 shadow-lg"
           title="End Call"
         >
           <PhoneOff className="w-4 h-4" />

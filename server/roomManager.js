@@ -18,6 +18,28 @@ class RoomManager {
   }
 
   /**
+   * Find a room by ID or Name (case-insensitive)
+   */
+  findRoom(roomIdOrName) {
+    if (!roomIdOrName) return null;
+    const clean = roomIdOrName.trim();
+    const cleanUpper = clean.toUpperCase();
+    if (this.rooms.has(cleanUpper)) {
+      return this.rooms.get(cleanUpper);
+    }
+    if (this.rooms.has(clean)) {
+      return this.rooms.get(clean);
+    }
+    const lower = clean.toLowerCase();
+    for (const room of this.rooms.values()) {
+      if (room.name && room.name.toLowerCase() === lower) {
+        return room;
+      }
+    }
+    return null;
+  }
+
+  /**
    * Purge messages older than 30 minutes from all rooms
    */
   purgeExpiredMessages() {
@@ -50,7 +72,18 @@ class RoomManager {
   /**
    * Create or retrieve a custom room
    */
-  createRoom({ roomId, name, password, isPrivate = false, hostUser = null, maxUsers = 50 }) {
+  createRoom({
+    roomId,
+    name,
+    password,
+    isPrivate = false,
+    hostUser = null,
+    maxUsers = 50,
+    allowAudioCalls = true,
+    allowVideoCalls = true,
+    allowMediaUploads = true,
+    allowMemberChat = true
+  }) {
     const cleanId = roomId.trim().replace(/[^a-zA-Z0-9_-]/g, '-').toUpperCase();
     
     if (this.rooms.has(cleanId)) {
@@ -69,16 +102,129 @@ class RoomManager {
       isCustom: true,
       isPrivate,
       maxUsers,
+      allowAudioCalls: allowAudioCalls !== false,
+      allowVideoCalls: allowVideoCalls !== false,
+      allowMediaUploads: allowMediaUploads !== false,
+      allowMemberChat: allowMemberChat !== false,
       createdAt: Date.now(),
       hostId: hostUser ? hostUser.id : null,
       hostName: hostUser ? hostUser.name : null,
       users: new Map(),
+      callParticipants: new Map(),
       messages: [],
       typingUsers: new Set()
     };
 
     this.rooms.set(cleanId, room);
     return { success: true, room };
+  }
+
+  /**
+   * Update settings for an existing room (Host only)
+   */
+  updateRoomSettings(roomId, hostUserId, settings = {}) {
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      return { success: false, error: 'Room not found' };
+    }
+
+    // Verify user is the host
+    if (room.hostId && room.hostId !== hostUserId) {
+      return { success: false, error: 'Permission denied: Only the room host can update room settings' };
+    }
+
+    if (settings.name && settings.name.trim()) {
+      room.name = settings.name.trim();
+    }
+
+    if (typeof settings.allowAudioCalls === 'boolean') {
+      room.allowAudioCalls = settings.allowAudioCalls;
+    }
+
+    if (typeof settings.allowVideoCalls === 'boolean') {
+      room.allowVideoCalls = settings.allowVideoCalls;
+    }
+
+    if (typeof settings.allowMediaUploads === 'boolean') {
+      room.allowMediaUploads = settings.allowMediaUploads;
+    }
+
+    if (typeof settings.allowMemberChat === 'boolean') {
+      room.allowMemberChat = settings.allowMemberChat;
+    }
+
+    if (typeof settings.maxUsers === 'number') {
+      room.maxUsers = settings.maxUsers;
+    }
+
+    if (typeof settings.password === 'string') {
+      const trimmedPwd = settings.password.trim();
+      if (trimmedPwd) {
+        room.hasPassword = true;
+        room.passwordHash = this.hashPassword(trimmedPwd);
+      } else {
+        room.hasPassword = false;
+        room.passwordHash = null;
+      }
+    }
+
+    return { success: true, room: this.getRoomPublicInfo(roomId) };
+  }
+
+  /**
+   * Get active group call state for a room
+   */
+  getRoomCallState(roomId) {
+    const room = this.rooms.get(roomId);
+    if (!room || !room.callParticipants) {
+      return { isLive: false, participants: [] };
+    }
+    return {
+      isLive: room.callParticipants.size > 0,
+      participantCount: room.callParticipants.size,
+      participants: Array.from(room.callParticipants.values())
+    };
+  }
+
+  /**
+   * Add a participant to the room's group call
+   */
+  addCallParticipant(roomId, socketId, user, isVideo = true) {
+    const room = this.rooms.get(roomId);
+    if (!room) return { success: false, error: 'Room not found' };
+
+    if (!room.callParticipants) {
+      room.callParticipants = new Map();
+    }
+
+    const participant = {
+      socketId,
+      id: user.id || socketId,
+      name: user.name || 'Anonymous',
+      avatar: user.avatar || user.name,
+      isVideo,
+      isMuted: false,
+      isCameraOff: !isVideo,
+      joinedAt: Date.now()
+    };
+
+    room.callParticipants.set(socketId, participant);
+    return { 
+      success: true, 
+      participant, 
+      callState: this.getRoomCallState(roomId),
+      existingParticipants: Array.from(room.callParticipants.values()).filter(p => p.socketId !== socketId)
+    };
+  }
+
+  /**
+   * Remove a participant from the room's group call
+   */
+  removeCallParticipant(roomId, socketId) {
+    const room = this.rooms.get(roomId);
+    if (!room || !room.callParticipants) return null;
+    room.callParticipants.delete(socketId);
+    return this.getRoomCallState(roomId);
   }
 
   /**
@@ -96,8 +242,12 @@ class RoomManager {
         isCustom: false,
         isLocal,
         networkType,
+        allowAudioCalls: true,
+        allowVideoCalls: true,
+        allowMediaUploads: true,
         createdAt: Date.now(),
         users: new Map(),
+        callParticipants: new Map(),
         messages: [],
         typingUsers: new Set()
       });
@@ -119,8 +269,15 @@ class RoomManager {
       hasPassword: room.hasPassword,
       isCustom: room.isCustom || false,
       userCount: room.users.size,
+      maxUsers: room.maxUsers || 50,
       createdAt: room.createdAt,
-      hostName: room.hostName
+      hostId: room.hostId,
+      hostName: room.hostName,
+      allowAudioCalls: room.allowAudioCalls !== false,
+      allowVideoCalls: room.allowVideoCalls !== false,
+      allowMediaUploads: room.allowMediaUploads !== false,
+      allowMemberChat: room.allowMemberChat !== false,
+      activeCall: this.getRoomCallState(roomId)
     };
   }
 
@@ -150,7 +307,7 @@ class RoomManager {
       avatar: user.avatar || user.name || 'avatar',
       color: user.color || '#3b82f6',
       device: user.device || 'desktop',
-      isHost: room.hostId === (user.id || socketId),
+      isHost: Boolean(room.hostId && (room.hostId === user.id || room.hostId === user.name || room.hostId === socketId)),
       joinedAt: Date.now()
     };
 
@@ -173,6 +330,9 @@ class RoomManager {
     if (room) {
       room.users.delete(socketId);
       room.typingUsers.delete(user.name);
+      if (room.callParticipants) {
+        room.callParticipants.delete(socketId);
+      }
 
       if (room.isCustom && room.users.size === 0) {
         setTimeout(() => {
@@ -185,7 +345,12 @@ class RoomManager {
     }
 
     this.socketMap.delete(socketId);
-    return { roomId, user, remainingUsers: room ? Array.from(room.users.values()) : [] };
+    return { 
+      roomId, 
+      user, 
+      remainingUsers: room ? Array.from(room.users.values()) : [],
+      callState: room ? this.getRoomCallState(roomId) : { isLive: false, participants: [] }
+    };
   }
 
   /**

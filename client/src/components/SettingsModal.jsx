@@ -48,30 +48,32 @@ export default function SettingsModal({ isOpen, onClose, soundMuted, setSoundMut
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-fade-in font-mono select-none">
-      <div className="w-full max-w-sm bg-[#080d17] rounded-2xl border border-[#1a263d] shadow-2xl p-6">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-[#161f30] mb-5">
-          <div className="flex items-center space-x-2">
-            <User className="w-4 h-4 text-[#00ff88]" />
-            <h3 className="font-bold text-sm text-zinc-100">
-              Profile & Settings
-            </h3>
-          </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-fade-in font-mono select-none">
+      <div className="w-full max-w-sm uiverse-modal relative max-h-[92dvh] overflow-y-auto scroll-touch p-5 sm:p-7">
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-white rounded-full bg-[#222222] hover:bg-black transition active:scale-95"
+          aria-label="Close"
+        >
+          <X className="w-4 h-4" />
+        </button>
 
-          <button
-            onClick={onClose}
-            className="p-1 text-zinc-400 hover:text-white rounded transition"
-          >
-            <X className="w-4 h-4" />
-          </button>
+        {/* Header */}
+        <div className="text-center mt-1 mb-3.5">
+          <h2 className="text-lg sm:text-xl font-bold text-white tracking-wide">
+            Profile & Settings
+          </h2>
+          <p className="text-xs text-zinc-400 mt-1">
+            Update your handle, avatar, and client preferences
+          </p>
         </div>
 
-        <form onSubmit={handleSave} className="space-y-4">
+        <form onSubmit={handleSave} className="space-y-3.5">
           {/* Avatar Preview */}
-          <div className="flex flex-col items-center justify-center">
+          <div className="flex flex-col items-center justify-center p-3.5 bg-[#121212] rounded-[18px] border border-[#222222] shadow-inner">
             <div className="relative mb-2 group">
-              <div className="w-16 h-16 rounded-xl border border-[#00ff88]/50 overflow-hidden shadow-lg">
+              <div className="w-16 h-16 rounded-[16px] border-2 border-[#00ff88]/50 overflow-hidden shadow-lg bg-black">
                 <img
                   src={getAvatarSvg(avatarSeed)}
                   alt="Avatar"
@@ -81,7 +83,7 @@ export default function SettingsModal({ isOpen, onClose, soundMuted, setSoundMut
               <button
                 type="button"
                 onClick={handleRandomize}
-                className="absolute -bottom-1 -right-1 p-1.5 bg-[#00ff88] text-black rounded-full shadow transition"
+                className="absolute -bottom-1 -right-1 p-1.5 bg-[#00ff88] text-black rounded-full shadow transition hover:scale-105 active:scale-95"
                 title="Randomize Avatar"
               >
                 <RefreshCw className="w-3 h-3" />
@@ -90,7 +92,7 @@ export default function SettingsModal({ isOpen, onClose, soundMuted, setSoundMut
             <button
               type="button"
               onClick={handleRandomize}
-              className="text-xs text-[#00ff88] hover:underline flex items-center space-x-1 font-semibold"
+              className="text-xs text-[#00ff88] hover:underline flex items-center space-x-1 font-semibold active:scale-95 transition"
             >
               <Sparkles className="w-3 h-3" />
               <span>Randomize Avatar</span>
@@ -99,35 +101,44 @@ export default function SettingsModal({ isOpen, onClose, soundMuted, setSoundMut
 
           {/* Name Input */}
           <div>
-            <label className="block text-xs font-bold text-zinc-300 mb-1.5">
-              Display Name
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                setAvatarSeed(e.target.value);
-              }}
-              placeholder="Your name"
-              className="w-full bg-[#05080f] border border-[#1a263d] focus:border-[#00ff88] rounded-xl px-4 py-2.5 text-xs text-zinc-100 font-bold focus:outline-none"
-              required
-            />
+            <div className="px-1 mb-1.5">
+              <span className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider">
+                Display Name
+              </span>
+            </div>
+
+            <div className="field">
+              <User className="input-icon text-[#00ff88]" />
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setAvatarSeed(e.target.value);
+                }}
+                placeholder="Enter your name"
+                className="input-field text-white font-bold"
+                required
+              />
+            </div>
           </div>
 
           {/* Device Profile */}
           <div>
-            <label className="block text-xs font-bold text-zinc-300 mb-1.5">
-              Device Type
-            </label>
+            <div className="px-1 mb-1.5">
+              <span className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider">
+                Device Type
+              </span>
+            </div>
+
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setDevice('desktop')}
-                className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 transition ${
+                className={`py-2 px-3 rounded-[14px] border text-xs font-bold flex items-center justify-center space-x-2 transition active:scale-95 ${
                   device === 'desktop'
-                    ? 'bg-[#00ff88]/10 border-[#00ff88] text-[#00ff88]'
-                    : 'bg-[#05080f] border-[#161f30] text-zinc-400'
+                    ? 'bg-[#252525] border-[#00ff88]/50 text-[#00ff88] shadow-md'
+                    : 'bg-[#121212] border-[#222222] text-zinc-400 hover:text-white'
                 }`}
               >
                 <Monitor className="w-4 h-4" />
@@ -137,10 +148,10 @@ export default function SettingsModal({ isOpen, onClose, soundMuted, setSoundMut
               <button
                 type="button"
                 onClick={() => setDevice('mobile')}
-                className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 transition ${
+                className={`py-2 px-3 rounded-[14px] border text-xs font-bold flex items-center justify-center space-x-2 transition active:scale-95 ${
                   device === 'mobile'
-                    ? 'bg-[#00f0ff]/10 border-[#00f0ff] text-[#00f0ff]'
-                    : 'bg-[#05080f] border-[#161f30] text-zinc-400'
+                    ? 'bg-[#252525] border-[#00f0ff]/50 text-[#00f0ff] shadow-md'
+                    : 'bg-[#121212] border-[#222222] text-zinc-400 hover:text-white'
                 }`}
               >
                 <Smartphone className="w-4 h-4" />
@@ -150,7 +161,7 @@ export default function SettingsModal({ isOpen, onClose, soundMuted, setSoundMut
           </div>
 
           {/* Audio Notifications */}
-          <div className="p-3 bg-[#05080f] rounded-xl border border-[#161f30] flex items-center justify-between">
+          <div className="p-3.5 bg-[#121212] rounded-[18px] border border-[#222222] flex items-center justify-between shadow-inner">
             <div className="flex items-center space-x-2 text-xs font-bold text-zinc-200">
               {soundMuted ? <VolumeX className="w-4 h-4 text-zinc-500" /> : <Volume2 className="w-4 h-4 text-[#00ff88]" />}
               <span>Sound Effects</span>
@@ -171,7 +182,7 @@ export default function SettingsModal({ isOpen, onClose, soundMuted, setSoundMut
           <div className="space-y-2 pt-1">
             <button
               type="submit"
-              className="w-full py-2.5 bg-[#00ff88] hover:bg-[#00e67a] text-black font-bold text-xs rounded-xl transition shadow-lg flex items-center justify-center space-x-1.5"
+              className="button-submit"
             >
               <Save className="w-3.5 h-3.5" />
               <span>Save Changes</span>
@@ -180,7 +191,7 @@ export default function SettingsModal({ isOpen, onClose, soundMuted, setSoundMut
             <button
               type="button"
               onClick={handleLogout}
-              className="w-full py-2 bg-transparent hover:bg-rose-500/10 text-rose-400 font-bold text-xs rounded-xl transition flex items-center justify-center space-x-1.5 border border-rose-500/20"
+              className="w-full py-2.5 bg-[#202020] hover:bg-rose-950/60 text-rose-400 hover:text-rose-200 font-bold text-xs rounded-[12px] transition flex items-center justify-center space-x-1.5 border border-rose-500/20 active:scale-95"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span>Sign Out / Switch User</span>

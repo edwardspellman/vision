@@ -5,8 +5,7 @@ import {
   Smile, 
   Mic, 
   Loader2, 
-  X,
-  CornerDownLeft
+  X
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import VoiceRecorder from './VoiceRecorder';
@@ -17,7 +16,7 @@ const EMOJI_LIST = [
 ];
 
 export default function MessageInput() {
-  const { sendMessage, setTyping } = useSocket();
+  const { sendMessage, setTyping, currentRoom } = useSocket();
   const [text, setText] = useState('');
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -29,6 +28,8 @@ export default function MessageInput() {
   const textareaRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const emojiPickerRef = useRef(null);
+
+  const mediaAllowed = currentRoom?.allowMediaUploads !== false;
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -142,7 +143,7 @@ export default function MessageInput() {
 
   if (isRecordingVoice) {
     return (
-      <div className="p-3 bg-[#05080f] border-t border-[#161f30] shrink-0 font-mono">
+      <div className="p-2.5 sm:p-3 bg-[#05080f] border-t border-[#161f30] shrink-0 font-mono pb-safe">
         <VoiceRecorder
           onSendAudio={(audioData) => {
             sendMessage({
@@ -159,7 +160,7 @@ export default function MessageInput() {
   }
 
   return (
-    <div className="p-3 md:p-4 bg-[#05080f] border-t border-[#161f30] shrink-0 relative font-mono">
+    <div className="p-2 sm:p-3 md:p-4 bg-[#05080f] border-t border-[#161f30] shrink-0 relative font-mono pb-safe">
       {/* File Attachment Preview */}
       {selectedFile && (
         <div className="mb-2 p-2 bg-[#080d17] border border-[#1a263d] rounded-xl flex items-center justify-between animate-fade-in">
@@ -180,24 +181,24 @@ export default function MessageInput() {
           </div>
           <button
             onClick={clearFileSelection}
-            className="p-1 text-zinc-400 hover:text-white rounded transition"
+            className="p-1.5 text-zinc-400 hover:text-white rounded-lg transition active:scale-95"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
-      {/* Emoji Popover */}
+      {/* Emoji Popover (Responsive Mobile Bounds) */}
       {showEmojiPicker && (
         <div
           ref={emojiPickerRef}
-          className="absolute bottom-full left-4 mb-2 p-2.5 bg-[#080d17] border border-[#1a263d] rounded-xl w-64 max-h-56 overflow-y-auto grid grid-cols-5 gap-1.5 z-40 shadow-2xl animate-fade-in"
+          className="absolute bottom-full left-2 sm:left-4 mb-2 p-2.5 bg-[#080d17] border border-[#1a263d] rounded-xl w-[calc(100vw-1rem)] sm:w-64 max-w-xs max-h-56 overflow-y-auto grid grid-cols-5 gap-1.5 z-40 shadow-2xl animate-fade-in scroll-touch"
         >
           {EMOJI_LIST.map((emoji, idx) => (
             <button
               key={idx}
               onClick={() => handleAddEmoji(emoji)}
-              className="p-2 hover:bg-[#111827] rounded-lg text-lg flex items-center justify-center hover:scale-125 transition"
+              className="p-2 hover:bg-[#111827] rounded-lg text-lg flex items-center justify-center hover:scale-125 transition active:scale-90"
             >
               {emoji}
             </button>
@@ -206,7 +207,7 @@ export default function MessageInput() {
       )}
 
       {/* Input Row */}
-      <form onSubmit={handleSend} className="flex items-end space-x-2">
+      <form onSubmit={handleSend} className="flex items-end space-x-1.5 sm:space-x-2">
         <input
           ref={fileInputRef}
           type="file"
@@ -216,12 +217,17 @@ export default function MessageInput() {
         />
 
         {/* Action Controls (Left) */}
-        <div className="flex items-center space-x-1 pb-1">
+        <div className="flex items-center space-x-1 pb-0.5">
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="p-2 text-zinc-400 hover:text-[#00f0ff] rounded-xl bg-[#080d17] border border-[#161f30] hover:border-[#00f0ff]/40 transition"
-            title="Attach file or image"
+            onClick={() => mediaAllowed && fileInputRef.current?.click()}
+            disabled={!mediaAllowed}
+            className={`p-2 sm:p-2.5 rounded-xl border transition ${
+              mediaAllowed
+                ? 'text-zinc-400 hover:text-[#00f0ff] bg-[#080d17] border-[#161f30] hover:border-[#00f0ff]/40 active:scale-95'
+                : 'text-zinc-600 bg-[#080d17]/50 border-[#161f30]/50 opacity-40 cursor-not-allowed'
+            }`}
+            title={mediaAllowed ? 'Attach file or image' : 'File sharing disabled by room host'}
           >
             <Paperclip className="w-4 h-4" />
           </button>
@@ -229,7 +235,7 @@ export default function MessageInput() {
           <button
             type="button"
             onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-            className="p-2 text-zinc-400 hover:text-[#ffb700] rounded-xl bg-[#080d17] border border-[#161f30] hover:border-[#ffb700]/40 transition"
+            className="p-2 sm:p-2.5 text-zinc-400 hover:text-[#ffb700] rounded-xl bg-[#080d17] border border-[#161f30] hover:border-[#ffb700]/40 transition active:scale-95"
             title="Add emoji"
           >
             <Smile className="w-4 h-4" />
@@ -237,7 +243,7 @@ export default function MessageInput() {
         </div>
 
         {/* Text Input Box */}
-        <div className="flex-1 bg-[#080d17] border border-[#1a263d] focus-within:border-[#00ff88] rounded-xl px-3.5 py-2.5 transition">
+        <div className="flex-1 bg-[#080d17] border border-[#1a263d] focus-within:border-[#00ff88] rounded-xl px-3 py-2 transition min-w-0">
           <textarea
             ref={textareaRef}
             value={text}
@@ -245,17 +251,17 @@ export default function MessageInput() {
             onKeyDown={handleKeyDown}
             rows={1}
             placeholder="Type a message or paste a code snippet..."
-            className="w-full bg-transparent text-zinc-100 placeholder-zinc-500 text-xs focus:outline-none resize-none max-h-24 overflow-y-auto font-mono"
+            className="w-full bg-transparent text-zinc-100 placeholder-zinc-500 text-sm sm:text-xs focus:outline-none resize-none max-h-24 overflow-y-auto font-mono scroll-touch"
           />
         </div>
 
         {/* Action Controls (Right) */}
-        <div className="flex items-center space-x-1 pb-1">
+        <div className="flex items-center space-x-1 pb-0.5">
           {!text.trim() && !selectedFile ? (
             <button
               type="button"
               onClick={() => setIsRecordingVoice(true)}
-              className="p-2 text-zinc-400 hover:text-[#ff3366] rounded-xl bg-[#080d17] border border-[#161f30] hover:border-[#ff3366]/40 transition"
+              className="p-2 sm:p-2.5 text-zinc-400 hover:text-[#ff3366] rounded-xl bg-[#080d17] border border-[#161f30] hover:border-[#ff3366]/40 transition active:scale-95"
               title="Record voice note"
             >
               <Mic className="w-4 h-4" />
@@ -264,7 +270,7 @@ export default function MessageInput() {
             <button
               type="submit"
               disabled={isUploading}
-              className="p-2 bg-[#00ff88] hover:bg-[#00e67a] text-black font-bold rounded-xl transition shadow-md flex items-center justify-center disabled:opacity-50"
+              className="p-2 sm:p-2.5 bg-[#00ff88] hover:bg-[#00e67a] text-black font-bold rounded-xl transition shadow-md flex items-center justify-center disabled:opacity-50 active:scale-95"
               title="Send"
             >
               {isUploading ? (

@@ -6,7 +6,8 @@ import {
   Smartphone,
   ArrowRight,
   RefreshCw,
-  User
+  User,
+  MessageSquare
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { getAvatarSvg, generateRandomName, getColorForString } from '../utils/avatar';
@@ -42,28 +43,27 @@ export default function ProfileSetupModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in font-mono select-none">
-      <div className="w-full max-w-md bg-[#080d17] rounded-2xl border border-[#00ff88]/40 shadow-2xl overflow-hidden animate-slide-up">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-[#161f30] flex items-center justify-between bg-[#0a1120]">
-          <div className="flex items-center space-x-2">
-            <User className="w-4 h-4 text-[#00ff88]" />
-            <h3 className="font-bold text-sm text-zinc-100">
-              Set Up Your Profile
-            </h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/90 backdrop-blur-md animate-fade-in font-mono select-none">
+      <div className="w-full max-w-md uiverse-modal relative max-h-[92dvh] overflow-y-auto scroll-touch p-5 sm:p-7">
+        {/* Heading */}
+        <div className="text-center mt-1 mb-3.5">
+          <div className="inline-flex items-center space-x-1 px-2.5 py-0.5 bg-[#202020] rounded-full border border-[#2e2e2e] text-[10px] text-[#00ff88] font-bold mb-2">
+            <span>Step 1 of 1</span>
           </div>
-
-          <span className="text-xs text-[#00ff88] font-bold">
-            Step 1 of 1
-          </span>
+          <h2 className="text-lg sm:text-xl font-bold text-white tracking-wide">
+            Set Up Your Profile
+          </h2>
+          <p className="text-xs text-zinc-400 mt-1">
+            Customize how other peers in rooms and on your local Wi-Fi see you
+          </p>
         </div>
 
         {/* Setup Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Avatar Preview */}
-          <div className="flex items-center space-x-4 p-3.5 bg-[#05080f] rounded-xl border border-[#161f30]">
+        <form onSubmit={handleSubmit} className="space-y-3.5">
+          {/* Avatar Preview Box */}
+          <div className="flex items-center space-x-4 p-3.5 bg-[#121212] rounded-[18px] border border-[#222222] shadow-inner">
             <div className="relative shrink-0">
-              <div className="w-16 h-16 rounded-xl border border-[#00ff88]/50 overflow-hidden shadow-lg">
+              <div className="w-16 h-16 rounded-[16px] border-2 border-[#00ff88]/50 overflow-hidden shadow-lg bg-black">
                 <img
                   src={getAvatarSvg(avatarSeed)}
                   alt="Avatar"
@@ -74,98 +74,112 @@ export default function ProfileSetupModal() {
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-bold text-zinc-300">
+                <span className="text-xs font-bold text-zinc-200">
                   Profile Avatar
                 </span>
                 <button
                   type="button"
                   onClick={handleRandomize}
-                  className="text-xs text-[#00ff88] hover:underline flex items-center space-x-1 font-semibold"
+                  className="text-xs text-[#00ff88] hover:underline flex items-center space-x-1 font-semibold active:scale-95 transition"
                 >
                   <RefreshCw className="w-3 h-3" />
                   <span>Randomize</span>
                 </button>
               </div>
-              <p className="text-xs text-zinc-400">
-                Click randomize to generate a unique look
+              <p className="text-[11px] text-zinc-400">
+                Auto-generated cyber avatar
               </p>
             </div>
           </div>
 
           {/* Name Input */}
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-bold text-zinc-300">
+            <div className="px-1 mb-1.5">
+              <span className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider">
                 Display Name / Nickname
-              </label>
+              </span>
             </div>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                setAvatarSeed(e.target.value);
-              }}
-              placeholder="Your name"
-              className="w-full bg-[#05080f] border border-[#1a263d] focus:border-[#00ff88] rounded-xl px-4 py-2.5 text-xs text-white font-bold focus:outline-none"
-              required
-            />
+
+            <div className="field">
+              <User className="input-icon text-[#00ff88]" />
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setAvatarSeed(e.target.value);
+                }}
+                placeholder="Enter your name"
+                className="input-field text-white font-bold"
+                required
+                autoFocus
+              />
+            </div>
           </div>
 
           {/* Device Profile */}
           <div>
-            <label className="block text-xs font-bold text-zinc-300 mb-1.5">
-              Current Device
-            </label>
+            <div className="px-1 mb-1.5">
+              <span className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider">
+                Current Device
+              </span>
+            </div>
+
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setDevice('desktop')}
-                className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 transition ${
+                className={`py-2 px-3 rounded-[14px] border text-xs font-bold flex items-center justify-center space-x-2 transition active:scale-95 ${
                   device === 'desktop'
-                    ? 'bg-[#00ff88]/10 border-[#00ff88] text-[#00ff88]'
-                    : 'bg-[#05080f] border-[#161f30] text-zinc-400'
+                    ? 'bg-[#252525] border-[#00ff88]/50 text-[#00ff88] shadow-md'
+                    : 'bg-[#121212] border-[#222222] text-zinc-400 hover:text-white'
                 }`}
               >
                 <Monitor className="w-4 h-4" />
-                <span>Desktop / Laptop</span>
+                <span>Desktop</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setDevice('mobile')}
-                className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 transition ${
+                className={`py-2 px-3 rounded-[14px] border text-xs font-bold flex items-center justify-center space-x-2 transition active:scale-95 ${
                   device === 'mobile'
-                    ? 'bg-[#00f0ff]/10 border-[#00f0ff] text-[#00f0ff]'
-                    : 'bg-[#05080f] border-[#161f30] text-zinc-400'
+                    ? 'bg-[#252525] border-[#00f0ff]/50 text-[#00f0ff] shadow-md'
+                    : 'bg-[#121212] border-[#222222] text-zinc-400 hover:text-white'
                 }`}
               >
                 <Smartphone className="w-4 h-4" />
-                <span>Mobile Phone</span>
+                <span>Mobile</span>
               </button>
             </div>
           </div>
 
           {/* Status Tagline */}
           <div>
-            <label className="block text-xs font-bold text-zinc-300 mb-1">
-              Status Message (Optional)
-            </label>
-            <input
-              type="text"
-              value={tagline}
-              onChange={(e) => setTagline(e.target.value)}
-              placeholder="e.g. Working remotely, Chilling"
-              className="w-full bg-[#05080f] border border-[#1a263d] focus:border-[#00ff88] rounded-xl px-4 py-2 text-xs text-zinc-200 focus:outline-none"
-            />
+            <div className="px-1 mb-1.5">
+              <span className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider">
+                Status Message (Optional)
+              </span>
+            </div>
+
+            <div className="field">
+              <MessageSquare className="input-icon text-zinc-400" />
+              <input
+                type="text"
+                value={tagline}
+                onChange={(e) => setTagline(e.target.value)}
+                placeholder="Status message"
+                className="input-field"
+              />
+            </div>
           </div>
 
-          {/* Confirm Button */}
+          {/* Submit Button */}
           <button
             type="submit"
-            className="w-full py-3 bg-[#00ff88] hover:bg-[#00e67a] text-black font-bold text-xs rounded-xl transition shadow-lg flex items-center justify-center space-x-2 mt-2"
+            className="button-submit"
           >
-            <span>Save & Start Chatting</span>
+            <span>Complete Setup & Enter</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>

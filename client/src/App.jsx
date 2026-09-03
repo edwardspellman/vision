@@ -9,6 +9,8 @@ import RoomModal from './components/RoomModal';
 import ShareModal from './components/ShareModal';
 import PasswordModal from './components/PasswordModal';
 import SettingsModal from './components/SettingsModal';
+import RoomSettingsModal from './components/RoomSettingsModal';
+import RoomCallModal from './components/RoomCallModal';
 import VideoCallModal from './components/VideoCallModal';
 import ImageLightbox from './components/ImageLightbox';
 import InitialLoader from './components/InitialLoader';
@@ -19,6 +21,7 @@ function MainApp() {
   const { connected, currentRoom, isAuthenticated, showProfileSetup } = useSocket();
   const [showSplash, setShowSplash] = useState(true);
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
+  const [isRoomSettingsModalOpen, setIsRoomSettingsModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -28,7 +31,7 @@ function MainApp() {
   });
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#04060a] text-zinc-300 overflow-hidden font-mono antialiased">
+    <div className="flex flex-col h-screen h-[100dvh] w-screen bg-[#04060a] text-zinc-300 overflow-hidden font-mono antialiased">
       {/* 1. Initial Wormhole Splash Screen */}
       {showSplash && (
         <InitialLoader
@@ -50,6 +53,7 @@ function MainApp() {
       {/* Top Header Navigation */}
       <Header
         onOpenRoomModal={() => setIsRoomModalOpen(true)}
+        onOpenRoomSettingsModal={() => setIsRoomSettingsModalOpen(true)}
         onOpenShareModal={() => setIsShareModalOpen(true)}
         onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -62,6 +66,7 @@ function MainApp() {
         <main className="flex-1 flex flex-col min-w-0 h-full relative">
           <ChatArea
             onOpenShareModal={() => setIsShareModalOpen(true)}
+            onOpenRoomModal={() => setIsRoomModalOpen(true)}
             onImageClick={(url) => setPreviewImage(url)}
           />
           <MessageInput />
@@ -71,6 +76,8 @@ function MainApp() {
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
           onOpenShareModal={() => setIsShareModalOpen(true)}
+          onOpenRoomModal={() => setIsRoomModalOpen(true)}
+          onOpenRoomSettingsModal={() => setIsRoomSettingsModalOpen(true)}
         />
       </div>
 
@@ -78,6 +85,11 @@ function MainApp() {
       <RoomModal
         isOpen={isRoomModalOpen}
         onClose={() => setIsRoomModalOpen(false)}
+      />
+
+      <RoomSettingsModal
+        isOpen={isRoomSettingsModalOpen}
+        onClose={() => setIsRoomSettingsModalOpen(false)}
       />
 
       <ShareModal
@@ -95,6 +107,8 @@ function MainApp() {
       />
 
       <VideoCallModal />
+
+      <RoomCallModal />
 
       <ImageLightbox
         imageUrl={previewImage}

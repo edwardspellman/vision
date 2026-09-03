@@ -3,14 +3,57 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --sat: env(safe-area-inset-top, 0px);
+    --sar: env(safe-area-inset-right, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --sal: env(safe-area-inset-left, 0px);
+  }
+
+  html, body {
+    height: 100%;
+    height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
   body {
-    @apply bg-[#04060a] text-zinc-300 min-h-screen font-mono;
+    @apply bg-[#04060a] text-zinc-300 font-mono;
     background-image: 
       radial-gradient(circle at 50% 0%, rgba(0, 255, 136, 0.03) 0%, transparent 60%),
       linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
       linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
     background-size: 100% 100%, 32px 32px, 32px 32px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+
+  /* Prevent automatic zoom on input focus in iOS Safari */
+  @media screen and (max-width: 768px) {
+    input, textarea, select {
+      font-size: 16px !important;
+    }
+  }
+}
+
+/* Safe area padding utilities */
+.pt-safe {
+  padding-top: max(0.5rem, env(safe-area-inset-top));
+}
+.pb-safe {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+.pl-safe {
+  padding-left: max(0.5rem, env(safe-area-inset-left));
+}
+.pr-safe {
+  padding-right: max(0.5rem, env(safe-area-inset-right));
+}
+
+/* Smooth momentum scrolling for iOS */
+.scroll-touch {
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Custom Minimal Terminal Scrollbar */
@@ -134,3 +177,145 @@
     box-shadow: 0px 10px 20px rgba(0, 255, 136, 0);
   }
 }
+
+/* From Uiverse.io by Praashoo7 - Modal Form Styling */
+.uiverse-room-modal,
+.uiverse-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background-color: #171717;
+  border-radius: 25px;
+  border: 1px solid #282828;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85);
+  transition: .3s ease-in-out;
+}
+
+.uiverse-room-modal .field,
+.uiverse-modal .field {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.6em;
+  border-radius: 25px;
+  padding: 0.6em 1em;
+  border: none;
+  outline: none;
+  color: white;
+  background-color: #171717;
+  box-shadow: inset 2px 5px 10px rgb(5, 5, 5);
+  transition: box-shadow 0.2s ease;
+}
+
+.uiverse-room-modal .field:focus-within,
+.uiverse-modal .field:focus-within {
+  box-shadow: inset 2px 5px 10px rgb(5, 5, 5), 0 0 0 1px rgba(0, 255, 136, 0.4);
+}
+
+.uiverse-room-modal .input-icon,
+.uiverse-modal .input-icon {
+  height: 1.2em;
+  width: 1.2em;
+  color: #888888;
+  flex-shrink: 0;
+}
+
+.uiverse-room-modal .input-field,
+.uiverse-modal .input-field {
+  background: none;
+  border: none;
+  outline: none;
+  width: 100%;
+  color: #d3d3d3;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.uiverse-room-modal .input-field::placeholder,
+.uiverse-modal .input-field::placeholder {
+  color: #555555;
+}
+
+.uiverse-room-modal .button1,
+.uiverse-modal .button1 {
+  padding: 0.55em 1.2em;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+  transition: .3s ease-in-out;
+  background-color: #252525;
+  color: white;
+  font-weight: bold;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.uiverse-room-modal .button1:hover,
+.uiverse-modal .button1:hover {
+  background-color: black;
+  color: #00ff88;
+}
+
+.uiverse-room-modal .button2,
+.uiverse-modal .button2 {
+  padding: 0.55em 1.2em;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+  transition: .3s ease-in-out;
+  background-color: #252525;
+  color: white;
+  font-weight: bold;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.uiverse-room-modal .button2:hover,
+.uiverse-modal .button2:hover {
+  background-color: black;
+  color: #00f0ff;
+}
+
+.uiverse-room-modal .button-submit,
+.uiverse-modal .button-submit {
+  width: 100%;
+  padding: 0.75em 1.5em;
+  border-radius: 12px;
+  border: none;
+  outline: none;
+  transition: .3s ease-in-out;
+  background-color: #252525;
+  color: white;
+  font-weight: bold;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.uiverse-room-modal .button-submit:hover,
+.uiverse-modal .button-submit:hover {
+  background-color: black;
+  color: #00ff88;
+  box-shadow: 0 0 15px rgba(0, 255, 136, 0.25);
+}
+
+.uiverse-room-modal .button-submit:active,
+.uiverse-modal .button-submit:active {
+  transform: scale(0.98);
+}
+
+
+
+

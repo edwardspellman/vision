@@ -17,7 +17,17 @@ module.exports = function socketHandler(io) {
      */
     socket.on('create_room', (data, callback) => {
       try {
-        const { roomId, name, password, isPrivate, maxUsers, user } = data;
+        const { 
+          roomId, 
+          name, 
+          password, 
+          isPrivate, 
+          maxUsers, 
+          user, 
+          allowAudioCalls = true, 
+          allowVideoCalls = true, 
+          allowMediaUploads = true 
+        } = data;
         
         if (!roomId || !roomId.trim()) {
           return callback && callback({ success: false, error: 'Room ID is required' });
@@ -29,7 +39,10 @@ module.exports = function socketHandler(io) {
           password,
           isPrivate,
           hostUser: user,
-          maxUsers: maxUsers || 50
+          maxUsers: maxUsers || 50,
+          allowAudioCalls,
+          allowVideoCalls,
+          allowMediaUploads
         });
 
         if (!result.success) {
@@ -55,6 +68,39 @@ module.exports = function socketHandler(io) {
     });
 
     /**
+     * UPDATE ROOM SETTINGS (Host only)
+     */
+    socket.on('update_room_settings', (data, callback) => {
+      try {
+        const { roomId, settings } = data;
+        const mapping = roomManager.socketMap.get(socket.id);
+
+        if (!mapping || mapping.roomId !== roomId) {
+          return callback && callback({ success: false, error: 'Not authorized in this room' });
+        }
+
+        const result = roomManager.updateRoomSettings(roomId, mapping.user.id, settings);
+        if (result.success) {
+          io.to(roomId).emit('room_settings_updated', result.room);
+
+          const sysMsg = roomManager.addMessage(roomId, {
+            sender: { name: 'System', avatar: 'bot', color: '#6366f1' },
+            text: `Room settings & permissions updated by Host (${mapping.user.name}).`,
+            type: 'system'
+          });
+          io.to(roomId).emit('new_message', sysMsg);
+
+          if (callback) callback({ success: true, room: result.room });
+        } else {
+          if (callback) callback({ success: false, error: result.error });
+        }
+      } catch (err) {
+        console.error('Error updating room settings:', err);
+        if (callback) callback({ success: false, error: 'Failed to update room settings' });
+      }
+    });
+
+    /**
      * JOIN ROOM (Auto or Custom)
      */
     socket.on('join_room', (data, callback) => {
@@ -68,9 +114,10 @@ module.exports = function socketHandler(io) {
           targetRoomId = auto.id;
         }
 
-        // Attempt to find or create auto room
-        let room = roomManager.rooms.get(targetRoomId);
-        if (!room && targetRoomId.startsWith('LAN-') || targetRoomId.startsWith('IP-')) {
+        // Attempt to find room by ID or Name
+        let room = roomManager.findRoom(targetRoomId);
+
+        if (!room && (targetRoomId.startsWith('LAN-') || targetRoomId.startsWith('IP-'))) {
           room = roomManager.getOrCreateAutoRoom({
             roomId: targetRoomId,
             roomName: autoRoom.roomName,
@@ -79,10 +126,12 @@ module.exports = function socketHandler(io) {
           });
         }
 
-        if (!room) {
+        if (room) {
+          targetRoomId = room.id;
+        } else {
           return callback && callback({
             success: false,
-            error: 'Room not found. Check the Room ID or create a new room.'
+            error: 'Room not found. Check the room name or code.'
           });
         }
 
@@ -135,6 +184,46 @@ module.exports = function socketHandler(io) {
       } catch (err) {
         console.error('Error joining room:', err);
         if (callback) callback({ success: false, error: 'Internal server error joining room' });
+      }
+    });
+
+    /**
+     * LEAVE ROOM
+     */
+    socket.on('leave_room', (callback) => {
+      try {
+        const removal = roomManager.removeUser(socket.id);
+        if (removal) {
+          const { roomId, user, remainingUsers } = removal;
+          
+          Array.from(socket.rooms).forEach(r => {
+            if (r !== socket.id) socket.leave(r);
+          });
+
+          // Notify other users in the room
+          socket.to(roomId).emit('user_left', {
+            user,
+            users: remainingUsers
+          });
+
+          // Add system notification message
+          const sysMsg = roomManager.addMessage(roomId, {
+            sender: { name: 'System', avatar: 'bot', color: '#6366f1' },
+            text: `${user.name} left the room.`,
+            type: 'system'
+          });
+          io.to(roomId).emit('new_message', sysMsg);
+
+          // End any active calls for this socket
+          socket.to(roomId).emit('webrtc_call_ended', {
+            senderSocketId: socket.id
+          });
+        }
+
+        if (callback) callback({ success: true });
+      } catch (err) {
+        console.error('Error leaving room:', err);
+        if (callback) callback({ success: false, error: 'Failed to leave room' });
       }
     });
 
@@ -204,10 +293,22 @@ module.exports = function socketHandler(io) {
     socket.on('webrtc_call_user', ({ targetSocketId, roomId, isVideo }) => {
       const mapping = roomManager.socketMap.get(socket.id);
       if (mapping) {
+        const targetRoomId = roomId || mapping.roomId;
+        const room = roomManager.rooms.get(targetRoomId);
+
+        if (room) {
+          if (isVideo && room.allowVideoCalls === false) {
+            return socket.emit('call_error', { message: 'Video calls have been disabled by the room admin.' });
+          }
+          if (!isVideo && room.allowAudioCalls === false) {
+            return socket.emit('call_error', { message: 'Voice calls have been disabled by the room admin.' });
+          }
+        }
+
         io.to(targetSocketId).emit('webrtc_incoming_call', {
           callerSocketId: socket.id,
           callerUser: mapping.user,
-          roomId,
+          roomId: targetRoomId,
           isVideo
         });
       }
@@ -267,18 +368,111 @@ module.exports = function socketHandler(io) {
     });
 
     /**
+     * GROUP / ROOM CALL SIGNALING
+     */
+    socket.on('join_room_call', ({ roomId, isVideo = true }, callback) => {
+      try {
+        const mapping = roomManager.socketMap.get(socket.id);
+        if (!mapping || mapping.roomId !== roomId) {
+          return callback && callback({ success: false, error: 'Not in this room' });
+        }
+
+        const room = roomManager.rooms.get(roomId);
+        if (room) {
+          if (isVideo && room.allowVideoCalls === false) {
+            return callback && callback({ success: false, error: 'Video calls disabled by room host' });
+          }
+          if (!isVideo && room.allowAudioCalls === false) {
+            return callback && callback({ success: false, error: 'Voice calls disabled by room host' });
+          }
+        }
+
+        const result = roomManager.addCallParticipant(roomId, socket.id, mapping.user, isVideo);
+        if (result.success) {
+          // Notify entire room of active live call status
+          io.to(roomId).emit('room_call_state_updated', result.callState);
+
+          // Notify other participants in the call to create mesh connections
+          socket.to(roomId).emit('room_call_user_joined', {
+            participant: result.participant,
+            socketId: socket.id
+          });
+
+          // Add automated system notice if this starts the call
+          if (result.callState.participantCount === 1) {
+            const sysMsg = roomManager.addMessage(roomId, {
+              sender: { name: 'System', avatar: 'bot', color: '#6366f1' },
+              text: `🎙️ ${mapping.user.name} started a Room Call. Click "Join Call" to connect!`,
+              type: 'system'
+            });
+            io.to(roomId).emit('new_message', sysMsg);
+          }
+
+          if (callback) {
+            callback({
+              success: true,
+              participant: result.participant,
+              existingParticipants: result.existingParticipants,
+              callState: result.callState
+            });
+          }
+        } else {
+          if (callback) callback({ success: false, error: result.error });
+        }
+      } catch (err) {
+        console.error('Error joining room call:', err);
+        if (callback) callback({ success: false, error: 'Failed to join room call' });
+      }
+    });
+
+    socket.on('leave_room_call', ({ roomId }, callback) => {
+      try {
+        const mapping = roomManager.socketMap.get(socket.id);
+        const targetRoomId = roomId || (mapping ? mapping.roomId : null);
+        if (!targetRoomId) return;
+
+        const updatedState = roomManager.removeCallParticipant(targetRoomId, socket.id);
+        if (updatedState) {
+          io.to(targetRoomId).emit('room_call_state_updated', updatedState);
+          socket.to(targetRoomId).emit('room_call_user_left', {
+            socketId: socket.id
+          });
+        }
+        if (callback) callback({ success: true });
+      } catch (err) {
+        console.error('Error leaving room call:', err);
+      }
+    });
+
+    // Multi-peer Mesh Signal Forwarding
+    socket.on('webrtc_room_signal', ({ targetSocketId, signal }) => {
+      io.to(targetSocketId).emit('webrtc_room_signal', {
+        senderSocketId: socket.id,
+        signal
+      });
+    });
+
+    /**
      * DISCONNECT
      */
     socket.on('disconnect', () => {
       const removal = roomManager.removeUser(socket.id);
       if (removal) {
-        const { roomId, user, remainingUsers } = removal;
+        const { roomId, user, remainingUsers, callState } = removal;
         
         // Notify others
         socket.to(roomId).emit('user_left', {
           user,
           users: remainingUsers
         });
+
+        // Notify room call peers
+        if (callState) {
+          io.to(roomId).emit('room_call_state_updated', callState);
+          socket.to(roomId).emit('room_call_user_left', {
+            socketId: socket.id
+          });
+        }
 
         // Add a system notification message
         const sysMsg = roomManager.addMessage(roomId, {
@@ -288,7 +482,7 @@ module.exports = function socketHandler(io) {
         });
         io.to(roomId).emit('new_message', sysMsg);
 
-        // Also end any active call the user was in
+        // Also end any active 1-on-1 call
         socket.to(roomId).emit('webrtc_call_ended', {
           senderSocketId: socket.id
         });

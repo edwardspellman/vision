@@ -5,7 +5,9 @@ import {
   ArrowRight, 
   Sparkles,
   Lock,
-  MessageSquare
+  User,
+  Shield,
+  Wifi
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { generateRandomName } from '../utils/avatar';
@@ -43,48 +45,44 @@ export default function AuthModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in font-mono select-none">
-      <div className="w-full max-w-md bg-[#080d17] rounded-2xl border border-[#1a263d] shadow-2xl overflow-hidden">
-        {/* Header */}
-        <div className="px-6 py-5 border-b border-[#161f30] flex items-center justify-between bg-[#0a1120]">
-          <div>
-            <h3 className="font-bold text-base text-zinc-100 flex items-center space-x-1.5">
-              <span>Vision</span>
-              <span className="text-[#00ff88] text-xs font-normal px-1.5 py-0.5 bg-[#00ff88]/10 border border-[#00ff88]/20 rounded">
-                Messenger
-              </span>
-            </h3>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              Instant room & Wi-Fi communication
-            </p>
-          </div>
-
-          <div className="flex items-center space-x-1 px-2.5 py-1 bg-[#00ff88]/10 border border-[#00ff88]/30 rounded-full text-[10px] text-[#00ff88] font-bold">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/90 backdrop-blur-md animate-fade-in font-mono select-none">
+      <div className="w-full max-w-md uiverse-modal relative max-h-[92dvh] overflow-y-auto scroll-touch p-5 sm:p-7">
+        {/* Heading */}
+        <div className="text-center mt-1 mb-3.5">
+          <div className="inline-flex items-center space-x-1.5 px-3 py-1 bg-[#202020] rounded-full border border-[#2e2e2e] text-[10px] text-[#00ff88] font-bold mb-2">
             <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-pulse" />
-            <span>Online</span>
+            <span>Vision Messenger Online</span>
           </div>
+          <h2 className="text-lg sm:text-xl font-bold text-white tracking-wide">
+            Welcome to Vision
+          </h2>
+          <p className="text-xs text-zinc-400 mt-1">
+            Fast, secure local Wi-Fi and custom room communication
+          </p>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="p-3 pb-0 flex space-x-2 border-b border-[#161f30] bg-[#0a1120]">
+        {/* Tab Selection */}
+        <div className="flex justify-center gap-2 mb-4 bg-[#111111] p-1.5 rounded-[16px] border border-[#222222]">
           <button
+            type="button"
             onClick={() => { setActiveTab('guest'); setError(''); }}
-            className={`flex-1 pb-3 text-xs font-bold border-b-2 transition flex items-center justify-center space-x-1.5 ${
+            className={`flex-1 py-2 text-xs font-bold rounded-[12px] transition flex items-center justify-center space-x-1.5 ${
               activeTab === 'guest'
-                ? 'border-[#00ff88] text-[#00ff88]'
-                : 'border-transparent text-zinc-400 hover:text-zinc-200'
+                ? 'bg-[#252525] text-[#00ff88] shadow-md border border-[#00ff88]/30'
+                : 'text-zinc-400 hover:text-white'
             }`}
           >
             <Zap className="w-3.5 h-3.5" />
-            <span>Quick Join (Instant)</span>
+            <span>Quick Join</span>
           </button>
 
           <button
+            type="button"
             onClick={() => { setActiveTab('passkey'); setError(''); }}
-            className={`flex-1 pb-3 text-xs font-bold border-b-2 transition flex items-center justify-center space-x-1.5 ${
+            className={`flex-1 py-2 text-xs font-bold rounded-[12px] transition flex items-center justify-center space-x-1.5 ${
               activeTab === 'passkey'
-                ? 'border-[#00f0ff] text-[#00f0ff]'
-                : 'border-transparent text-zinc-400 hover:text-zinc-200'
+                ? 'bg-[#252525] text-[#00f0ff] shadow-md border border-[#00f0ff]/30'
+                : 'text-zinc-400 hover:text-white'
             }`}
           >
             <KeyRound className="w-3.5 h-3.5" />
@@ -92,104 +90,127 @@ export default function AuthModal() {
           </button>
         </div>
 
+        {/* Error Alert */}
+        {error && (
+          <div className="mb-3.5 p-2.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-400 text-center font-medium">
+            {error}
+          </div>
+        )}
+
         {/* Form Body */}
-        <div className="p-6">
-          {error && (
-            <div className="mb-4 p-2.5 bg-[#ff3366]/10 border border-[#ff3366]/30 rounded-lg text-xs text-[#ff3366] text-center font-medium">
-              {error}
+        {activeTab === 'guest' ? (
+          <form onSubmit={handleGuestSubmit} className="space-y-3.5">
+            <div>
+              <div className="flex items-center justify-between px-1 mb-1.5">
+                <span className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider">
+                  Your Username
+                </span>
+                <button
+                  type="button"
+                  onClick={handleRandomize}
+                  className="text-xs text-[#00ff88] hover:underline font-semibold flex items-center space-x-1 active:scale-95 transition"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  <span>Randomize</span>
+                </button>
+              </div>
+
+              <div className="field">
+                <User className="input-icon text-[#00ff88]" />
+                <input
+                  type="text"
+                  value={handle}
+                  onChange={(e) => setHandle(e.target.value)}
+                  placeholder="Enter your username"
+                  className="input-field text-white font-bold"
+                  required
+                  autoFocus
+                />
+              </div>
             </div>
-          )}
 
-          {activeTab === 'guest' ? (
-            <form onSubmit={handleGuestSubmit} className="space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-bold text-zinc-300">
-                    Your Username
-                  </label>
-                  <button
-                    type="button"
-                    onClick={handleRandomize}
-                    className="text-xs text-[#00ff88] hover:underline font-semibold flex items-center space-x-1"
-                  >
-                    <Sparkles className="w-3 h-3" />
-                    <span>Randomize</span>
-                  </button>
-                </div>
-
-                <input
-                  type="text"
-                  value={handle}
-                  onChange={(e) => setHandle(e.target.value)}
-                  placeholder="e.g. Alex"
-                  className="w-full bg-[#05080f] border border-[#1a263d] focus:border-[#00ff88] rounded-xl px-4 py-2.5 text-xs text-white font-bold focus:outline-none"
-                  required
-                />
+            {/* Info Box */}
+            <div className="p-3.5 bg-[#121212] rounded-[18px] border border-[#222222] space-y-1.5 shadow-inner text-xs">
+              <div className="flex justify-between items-center text-zinc-400">
+                <span className="text-zinc-500 flex items-center space-x-1">
+                  <Wifi className="w-3 h-3 text-[#00ff88]" />
+                  <span>Auto Network:</span>
+                </span>
+                <span className="text-zinc-200 font-bold truncate max-w-[180px]">
+                  {ipInfo?.autoRoom?.roomName || 'Local Wi-Fi Network'}
+                </span>
               </div>
-
-              <div className="p-3 bg-[#05080f] rounded-xl border border-[#161f30] text-xs text-zinc-400 space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-zinc-500">Your Network:</span>
-                  <span className="text-zinc-200 font-semibold">{ipInfo?.autoRoom?.roomName || 'Local Wi-Fi Network'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-zinc-500">Privacy:</span>
-                  <span className="text-[#00ff88]">Zero sign-up required</span>
-                </div>
+              <div className="flex justify-between items-center text-zinc-400">
+                <span className="text-zinc-500 flex items-center space-x-1">
+                  <Shield className="w-3 h-3 text-[#00f0ff]" />
+                  <span>Account:</span>
+                </span>
+                <span className="text-[#00ff88] font-bold">Zero sign-up required</span>
               </div>
+            </div>
 
-              <button
-                type="submit"
-                className="w-full py-3 bg-[#00ff88] hover:bg-[#00e67a] text-black font-bold text-xs rounded-xl transition shadow-lg flex items-center justify-center space-x-2"
-              >
-                <span>Enter Vision</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={handlePasskeySubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-zinc-300 mb-1.5">
+            {/* Submit Button */}
+            <button
+              type="submit"
+              className="button-submit"
+            >
+              <span>Enter Vision</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handlePasskeySubmit} className="space-y-3.5">
+            <div>
+              <div className="px-1 mb-1.5">
+                <span className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider">
                   Username
-                </label>
+                </span>
+              </div>
+
+              <div className="field">
+                <User className="input-icon text-[#00f0ff]" />
                 <input
                   type="text"
                   value={handle}
                   onChange={(e) => setHandle(e.target.value)}
-                  placeholder="e.g. Alex"
-                  className="w-full bg-[#05080f] border border-[#1a263d] focus:border-[#00f0ff] rounded-xl px-4 py-2 text-xs text-white font-bold focus:outline-none"
+                  placeholder="Enter your username"
+                  className="input-field text-white font-bold"
                   required
+                  autoFocus
                 />
               </div>
+            </div>
 
-              <div>
-                <label className="block text-xs font-bold text-zinc-300 mb-1.5">
-                  Password / PIN
-                </label>
+            <div>
+              <div className="px-1 mb-1.5">
+                <span className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider">
+                  Password
+                </span>
+              </div>
+
+              <div className="field">
+                <Lock className="input-icon text-[#00f0ff]" />
                 <input
                   type="password"
                   value={passkey}
                   onChange={(e) => setPasskey(e.target.value)}
-                  placeholder="Enter your password"
-                  className="w-full bg-[#05080f] border border-[#1a263d] focus:border-[#00f0ff] rounded-xl px-4 py-2 text-xs text-white focus:outline-none"
+                  placeholder="Enter account password"
+                  className="input-field"
                   required
                 />
               </div>
+            </div>
 
-              <button
-                type="submit"
-                className="w-full py-3 bg-[#00f0ff] hover:bg-[#00d0e0] text-black font-bold text-xs rounded-xl transition shadow-lg flex items-center justify-center space-x-2"
-              >
-                <Lock className="w-4 h-4" />
-                <span>Sign In & Continue</span>
-              </button>
-            </form>
-          )}
-
-          <p className="text-[11px] text-zinc-500 text-center mt-4">
-            No emails or phone numbers needed. Chat instantly.
-          </p>
-        </div>
+            {/* Submit Button */}
+            <button
+              type="submit"
+              className="button-submit"
+            >
+              <KeyRound className="w-4 h-4 text-[#00f0ff]" />
+              <span>Authenticate & Enter</span>
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );
