@@ -81,7 +81,10 @@ function MainApp() {
           onOpenShareModal={() => setIsShareModalOpen(true)}
           onOpenRoomModal={() => setIsRoomModalOpen(true)}
           onOpenRoomSettingsModal={() => setIsRoomSettingsModalOpen(true)}
+          onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
           onOpenBetaModal={() => setIsBetaModalOpen(true)}
+          soundMuted={soundMuted}
+          setSoundMuted={setSoundMuted}
         />
       </div>
 
