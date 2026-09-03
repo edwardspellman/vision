@@ -5,6 +5,7 @@ import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
 import MessageInput from './components/MessageInput';
+import MobileNavBar from './components/MobileNavBar';
 import RoomModal from './components/RoomModal';
 import ShareModal from './components/ShareModal';
 import PasswordModal from './components/PasswordModal';
@@ -31,7 +32,7 @@ function MainApp() {
   });
 
   return (
-    <div className="flex flex-col h-screen h-[100dvh] w-screen bg-[#04060a] text-zinc-300 overflow-hidden font-mono antialiased">
+    <div className="flex flex-col h-screen h-[100dvh] w-screen bg-[#04060a] text-zinc-300 overflow-hidden font-mono antialiased select-none">
       {/* 1. Initial Wormhole Splash Screen */}
       {showSplash && (
         <InitialLoader
@@ -67,6 +68,7 @@ function MainApp() {
           <ChatArea
             onOpenShareModal={() => setIsShareModalOpen(true)}
             onOpenRoomModal={() => setIsRoomModalOpen(true)}
+            onOpenRoomSettingsModal={() => setIsRoomSettingsModalOpen(true)}
             onImageClick={(url) => setPreviewImage(url)}
           />
           <MessageInput />
@@ -80,6 +82,13 @@ function MainApp() {
           onOpenRoomSettingsModal={() => setIsRoomSettingsModalOpen(true)}
         />
       </div>
+
+      {/* Mobile Bottom Navigation Bar (iOS / Android) */}
+      <MobileNavBar
+        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        onOpenRoomModal={() => setIsRoomModalOpen(true)}
+        onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
+      />
 
       {/* Security Modals & Telemetry Windows */}
       <RoomModal

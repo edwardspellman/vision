@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Users, 
   Smartphone, 
@@ -9,19 +9,27 @@ import {
   X, 
   Copy, 
   Check, 
-  Crown,
-  LogOut,
-  LogIn,
-  Settings,
-  ShieldCheck,
-  PhoneOff,
-  VideoOff
+  Crown, 
+  LogOut, 
+  LogIn, 
+  Settings, 
+  ShieldCheck, 
+  PhoneOff, 
+  VideoOff,
+  Radio,
+  Share2
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useWebRTC } from '../context/WebRTCContext';
 import { getAvatarSvg } from '../utils/avatar';
 
-export default function Sidebar({ isOpen, onClose, onOpenShareModal, onOpenRoomModal, onOpenRoomSettingsModal }) {
+export default function Sidebar({ 
+  isOpen, 
+  onClose, 
+  onOpenShareModal, 
+  onOpenRoomModal, 
+  onOpenRoomSettingsModal 
+}) {
   const { currentRoom, roomUsers, user, ipInfo, leaveRoom } = useSocket();
   const { 
     startCall, 
@@ -30,7 +38,7 @@ export default function Sidebar({ isOpen, onClose, onOpenShareModal, onOpenRoomM
     startOrJoinRoomCall, 
     setIsRoomCallModalOpen 
   } = useWebRTC();
-  const [copied, setCopied] = React.useState(false);
+  const [copied, setCopied] = useState(false);
 
   const isCustomRoom = Boolean(
     currentRoom?.isCustom || 
@@ -42,6 +50,7 @@ export default function Sidebar({ isOpen, onClose, onOpenShareModal, onOpenRoomM
   );
 
   const callsAllowed = currentRoom?.allowAudioCalls !== false || currentRoom?.allowVideoCalls !== false;
+  const isCallLive = roomCallState?.isLive || roomCallState?.participantCount > 0;
 
   const handleCopyRoomId = () => {
     if (!currentRoom) return;
@@ -76,27 +85,34 @@ export default function Sidebar({ isOpen, onClose, onOpenShareModal, onOpenRoomM
     if (onClose && window.innerWidth < 768) onClose();
   };
 
+  const handleStartDirectCall = (targetSocketId, member, isVideo) => {
+    startCall(targetSocketId, member, isVideo);
+    if (onClose && window.innerWidth < 768) onClose();
+  };
+
   return (
     <>
-      {/* Mobile Backdrop */}
+      {/* Mobile Backdrop Overlay (Tap to Close) */}
       {isOpen && (
         <div 
           onClick={onClose}
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 md:hidden animate-fade-in"
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 md:hidden animate-fade-in touch-manipulation"
+          aria-hidden="true"
         />
       )}
 
+      {/* Main Sidebar Drawer */}
       <aside className={`
         fixed md:static top-0 right-0 bottom-0 z-50 md:z-20
-        w-80 max-w-[85vw] md:w-72 bg-[#05080f] border-l border-[#161f30] flex flex-col font-mono select-none
-        transition-transform duration-300 ease-in-out pt-safe pb-safe
+        w-80 max-w-[88vw] sm:max-w-xs md:w-72 bg-[#05080f] border-l border-[#161f30] flex flex-col font-mono select-none
+        transition-transform duration-300 ease-in-out h-full h-[100dvh] pt-safe pb-safe shadow-2xl md:shadow-none
         ${isOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}
       `}>
-        {/* Sidebar Header */}
+        {/* Sidebar Header with Mobile Close Action */}
         <div className="h-14 px-4 border-b border-[#161f30] flex items-center justify-between shrink-0 bg-[#070b14]">
           <div className="flex items-center space-x-2 text-zinc-200">
             <Users className="w-4 h-4 text-[#00ff88]" />
-            <span className="font-bold text-xs tracking-wide">Members</span>
+            <span className="font-bold text-xs tracking-wide">Members Online</span>
             <span className="text-xs bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/30 px-2 py-0.5 rounded-full font-bold">
               {roomUsers.length}
             </span>
@@ -104,16 +120,16 @@ export default function Sidebar({ isOpen, onClose, onOpenShareModal, onOpenRoomM
 
           <button 
             onClick={onClose}
-            className="p-2 text-zinc-400 hover:text-white rounded-lg md:hidden transition active:scale-95 bg-[#0b101c] border border-[#161f30]"
+            className="p-2 text-zinc-400 hover:text-white rounded-lg md:hidden transition active:scale-95 bg-[#0b101c] border border-[#161f30] min-w-[36px] min-h-[36px] flex items-center justify-center"
             aria-label="Close sidebar"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Current Room Box */}
+        {/* Current Room Information Card */}
         <div className="p-3 border-b border-[#161f30] bg-[#080d17]">
-          <div className="bg-[#05080f] rounded-lg p-3 border border-[#161f30] space-y-2">
+          <div className="bg-[#05080f] rounded-xl p-3 border border-[#161f30] space-y-2.5 shadow-inner">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
                 Current Room
@@ -124,13 +140,16 @@ export default function Sidebar({ isOpen, onClose, onOpenShareModal, onOpenRoomM
                 title="Copy Room Link / Code"
               >
                 {copied ? <Check className="w-3 h-3 text-[#00ff88]" /> : <Copy className="w-3 h-3" />}
-                <span>{copied ? 'Copied' : 'Share'}</span>
+                <span>{copied ? 'Copied' : 'Share Code'}</span>
               </button>
             </div>
 
             <div>
               <p className="text-xs font-bold text-zinc-100 truncate">
                 {currentRoom?.name || 'Local Network'}
+              </p>
+              <p className="text-[10px] text-[#00f0ff] font-bold tracking-wider truncate">
+                ID: {currentRoom?.id || 'LAN'}
               </p>
             </div>
 
@@ -147,44 +166,55 @@ export default function Sidebar({ isOpen, onClose, onOpenShareModal, onOpenRoomM
             )}
 
             {/* Room Actions */}
-            <div className="space-y-1.5 mt-1.5 pt-1 border-t border-[#161f30]">
-              {/* Group Room Call Button */}
+            <div className="space-y-1.5 pt-1.5 border-t border-[#161f30]">
+              {/* Host Settings Button */}
+              {isCustomRoom && isHost && (
+                <button
+                  onClick={handleOpenRoomSettings}
+                  className="w-full py-1.5 px-2.5 bg-[#00ff88]/10 hover:bg-[#00ff88]/20 text-[#00ff88] border border-[#00ff88]/30 rounded-lg text-xs font-bold flex items-center justify-center space-x-1.5 transition active:scale-95"
+                >
+                  <Crown className="w-3.5 h-3.5" />
+                  <span>Host Room Settings</span>
+                </button>
+              )}
+
+              {/* Group Room Call Quick Action */}
               {callsAllowed && (
                 <button
                   onClick={handleRoomCallClick}
-                  className={`w-full py-1.5 px-2.5 rounded-lg text-xs font-bold flex items-center justify-center space-x-1.5 transition active:scale-95 ${
-                    roomCallState.isLive
-                      ? 'bg-[#a855f7]/20 hover:bg-[#a855f7]/30 text-[#c084fc] border border-[#a855f7]/40 shadow-sm'
-                      : 'bg-[#00f0ff]/10 hover:bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff]/30'
+                  className={`w-full py-1.5 px-2.5 rounded-lg text-xs font-bold flex items-center justify-center space-x-1.5 transition active:scale-95 border ${
+                    isJoinedRoomCall
+                      ? 'bg-[#00ff88]/20 text-[#00ff88] border-[#00ff88]'
+                      : isCallLive
+                      ? 'bg-[#00f0ff]/20 text-[#00f0ff] border-[#00f0ff] animate-pulse'
+                      : 'bg-[#0b101c] hover:bg-[#111827] text-zinc-300 border-[#1a263d] hover:border-[#00f0ff]/40'
                   }`}
-                  title={roomCallState.isLive ? 'Join Active Room Call' : 'Start Room Call'}
                 >
-                  <Video className={`w-3.5 h-3.5 ${roomCallState.isLive ? 'animate-pulse' : ''}`} />
+                  <Video className="w-3.5 h-3.5 text-[#00f0ff]" />
                   <span>
-                    {roomCallState.isLive 
-                      ? (isJoinedRoomCall ? 'In Room Call (Open View)' : `Join Room Call (${roomCallState.participantCount})`) 
-                      : 'Start Room Call'}
+                    {isJoinedRoomCall ? 'Open Active Call' : isCallLive ? 'Join Live Room Call' : 'Start Room Call'}
                   </span>
                 </button>
               )}
 
               {isCustomRoom ? (
-                <div className="flex items-center space-x-1.5">
+                <div className="grid grid-cols-2 gap-1.5">
                   <button
-                    onClick={handleOpenRoomSettings}
-                    className="flex-1 py-1.5 px-2 bg-[#0b101c] hover:bg-[#111827] text-zinc-300 hover:text-[#00ff88] border border-[#1a263d] hover:border-[#00ff88]/40 rounded-lg text-xs font-bold flex items-center justify-center space-x-1.5 transition active:scale-95"
-                    title="Edit Room Settings & Permissions"
+                    onClick={() => {
+                      if (onOpenShareModal) onOpenShareModal();
+                      if (onClose && window.innerWidth < 768) onClose();
+                    }}
+                    className="py-1.5 px-2 bg-[#0b101c] hover:bg-[#111827] text-[#00ff88] border border-[#1a263d] rounded-lg text-xs font-bold flex items-center justify-center space-x-1 transition active:scale-95"
                   >
-                    {isHost ? <Crown className="w-3.5 h-3.5 text-[#00ff88]" /> : <Settings className="w-3.5 h-3.5 text-[#00ff88]" />}
-                    <span>{isHost ? 'Host Settings' : 'Room Info'}</span>
+                    <Share2 className="w-3 h-3" />
+                    <span>Invite</span>
                   </button>
 
                   <button
                     onClick={handleLeaveRoom}
-                    className="py-1.5 px-2.5 bg-[#1a0c14] hover:bg-[#2b101e] text-rose-400 border border-rose-500/30 hover:border-rose-500/50 rounded-lg text-xs font-bold flex items-center justify-center space-x-1 transition active:scale-95"
-                    title="Leave Room"
+                    className="py-1.5 px-2 bg-[#1a0c14] hover:bg-[#2b101e] text-rose-400 border border-rose-500/30 rounded-lg text-xs font-bold flex items-center justify-center space-x-1 transition active:scale-95"
                   >
-                    <LogOut className="w-3.5 h-3.5 text-rose-400" />
+                    <LogOut className="w-3 h-3" />
                     <span>Leave</span>
                   </button>
                 </div>
@@ -201,7 +231,7 @@ export default function Sidebar({ isOpen, onClose, onOpenShareModal, onOpenRoomM
           </div>
         </div>
 
-        {/* Member List */}
+        {/* Member List with Touch-Optimized Call Buttons */}
         <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5 scroll-touch">
           {roomUsers.map((member) => {
             const isMe = member.id === user.id || member.socketId === user.socketId;
@@ -211,7 +241,7 @@ export default function Sidebar({ isOpen, onClose, onOpenShareModal, onOpenRoomM
             return (
               <div
                 key={member.socketId || member.id}
-                className={`flex items-center justify-between p-2 rounded-lg border transition ${
+                className={`flex items-center justify-between p-2.5 rounded-xl border transition ${
                   isMe 
                     ? 'bg-[#0b1424] border-[#1d3557]' 
                     : 'bg-[#080c14] hover:bg-[#0d1422] border-[#141d2e]'
@@ -220,7 +250,7 @@ export default function Sidebar({ isOpen, onClose, onOpenShareModal, onOpenRoomM
                 {/* User Info */}
                 <div className="flex items-center space-x-2.5 min-w-0">
                   <div className="relative shrink-0">
-                    <div className="w-8 h-8 rounded-lg overflow-hidden border border-[#1c2638]">
+                    <div className="w-9 h-9 rounded-xl overflow-hidden border border-[#1c2638] bg-black">
                       <img
                         src={getAvatarSvg(member.avatar || member.name)}
                         alt={member.name}
@@ -235,44 +265,44 @@ export default function Sidebar({ isOpen, onClose, onOpenShareModal, onOpenRoomM
                         {member.name}
                       </p>
                       {member.isHost && (
-                        <Crown className="w-3 h-3 text-amber-400 shrink-0" title="Host" />
+                        <Crown className="w-3.5 h-3.5 text-[#00ff88] shrink-0" title="Host" />
                       )}
                     </div>
                     <span className="text-[10px] text-zinc-400 block">
-                      {isMe ? 'You' : 'Online'}
+                      {isMe ? 'You (Active)' : 'Online Peer'}
                     </span>
                   </div>
                 </div>
 
-                {/* Direct Call Actions */}
+                {/* Direct 1-on-1 Call Actions (Finger-friendly targets) */}
                 {!isMe && (
-                  <div className="flex items-center space-x-1 shrink-0">
+                  <div className="flex items-center space-x-1.5 shrink-0">
                     {/* Audio Call */}
                     <button
-                      onClick={() => audioAllowed && startCall(member.socketId, member, false)}
+                      onClick={() => audioAllowed && handleStartDirectCall(member.socketId, member, false)}
                       disabled={!audioAllowed}
-                      className={`p-1.5 rounded-lg transition ${
+                      className={`p-2 rounded-xl transition min-w-[36px] min-h-[36px] flex items-center justify-center ${
                         audioAllowed
-                          ? 'text-zinc-400 hover:text-[#00ff88] hover:bg-[#00ff88]/10 active:scale-95'
-                          : 'text-zinc-600 opacity-40 cursor-not-allowed'
+                          ? 'text-zinc-300 hover:text-[#00ff88] bg-[#0b101c] hover:bg-[#00ff88]/10 border border-[#1a263d] active:scale-95'
+                          : 'text-zinc-600 opacity-30 cursor-not-allowed bg-[#070a12]'
                       }`}
-                      title={audioAllowed ? 'Audio Call' : 'Voice calls disabled by room host'}
+                      title={audioAllowed ? 'Audio Call' : 'Voice calls disabled by host'}
                     >
-                      {audioAllowed ? <Phone className="w-3.5 h-3.5" /> : <PhoneOff className="w-3.5 h-3.5" />}
+                      {audioAllowed ? <Phone className="w-4 h-4 text-[#00ff88]" /> : <PhoneOff className="w-4 h-4" />}
                     </button>
 
                     {/* Video Call */}
                     <button
-                      onClick={() => videoAllowed && startCall(member.socketId, member, true)}
+                      onClick={() => videoAllowed && handleStartDirectCall(member.socketId, member, true)}
                       disabled={!videoAllowed}
-                      className={`p-1.5 rounded-lg transition ${
+                      className={`p-2 rounded-xl transition min-w-[36px] min-h-[36px] flex items-center justify-center ${
                         videoAllowed
-                          ? 'text-zinc-400 hover:text-[#00f0ff] hover:bg-[#00f0ff]/10 active:scale-95'
-                          : 'text-zinc-600 opacity-40 cursor-not-allowed'
+                          ? 'text-zinc-300 hover:text-[#00f0ff] bg-[#0b101c] hover:bg-[#00f0ff]/10 border border-[#1a263d] active:scale-95'
+                          : 'text-zinc-600 opacity-30 cursor-not-allowed bg-[#070a12]'
                       }`}
-                      title={videoAllowed ? 'Video Call' : 'Video calls disabled by room host'}
+                      title={videoAllowed ? 'Video Call' : 'Video calls disabled by host'}
                     >
-                      {videoAllowed ? <Video className="w-3.5 h-3.5" /> : <VideoOff className="w-3.5 h-3.5" />}
+                      {videoAllowed ? <Video className="w-4 h-4 text-[#00f0ff]" /> : <VideoOff className="w-4 h-4" />}
                     </button>
                   </div>
                 )}
@@ -281,7 +311,7 @@ export default function Sidebar({ isOpen, onClose, onOpenShareModal, onOpenRoomM
           })}
         </div>
 
-        {/* Footer info */}
+        {/* Footer Identity & Status */}
         <div className="p-3 border-t border-[#161f30] bg-[#04060a] shrink-0 text-xs">
           <div className="flex items-center justify-between text-zinc-400 mb-1">
             <span>Network Status</span>
@@ -290,12 +320,11 @@ export default function Sidebar({ isOpen, onClose, onOpenShareModal, onOpenRoomM
               <span>Connected</span>
             </span>
           </div>
-          <p className="text-zinc-300 truncate font-semibold">
-            {ipInfo?.autoRoom?.roomName || 'Local Wi-Fi Network'}
-          </p>
-          <p className="text-zinc-500 truncate text-[11px] mt-0.5">
-            IP: {ipInfo?.ip || '127.0.0.1'}
-          </p>
+
+          <div className="flex items-center justify-between text-[11px] text-zinc-500">
+            <span>IP Subnet</span>
+            <span className="font-mono text-zinc-400">{ipInfo?.maskedIp || 'Protected'}</span>
+          </div>
         </div>
       </aside>
     </>
