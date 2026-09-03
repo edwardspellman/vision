@@ -69,6 +69,7 @@ function MainApp() {
             onOpenShareModal={() => setIsShareModalOpen(true)}
             onOpenRoomModal={() => setIsRoomModalOpen(true)}
             onOpenRoomSettingsModal={() => setIsRoomSettingsModalOpen(true)}
+            onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
             onOpenBetaModal={() => setIsBetaModalOpen(true)}
             onImageClick={(url) => setPreviewImage(url)}
           />

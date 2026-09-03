@@ -183,6 +183,42 @@ export default function ChatArea({
               : 'You are connected to this local Wi-Fi network. Anyone on the same network joins automatically.'}
           </p>
 
+          {/* Dedicated Profile & Settings Card */}
+          <div className="my-3 p-3 bg-[#05080f] rounded-xl border border-[#161f30] text-left shadow-inner">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2.5 min-w-0">
+                <div className="w-10 h-10 rounded-xl overflow-hidden border border-[#00ff88]/40 bg-black shrink-0">
+                  <img
+                    src={getAvatarSvg(user.avatar || user.name)}
+                    alt={user.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center space-x-1.5">
+                    <p className="text-xs font-bold text-white truncate">{user.name}</p>
+                    <span className="text-[9px] px-1.5 py-0.2 bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/30 font-bold rounded">
+                      {isHost ? 'HOST' : 'YOU'}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-zinc-400 truncate">
+                    {user.tagline || user.status || 'Active on Network'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Edit Profile & Name Button */}
+              <button
+                onClick={onOpenSettingsModal}
+                className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-[#0b101c] hover:bg-[#111827] text-[#00ff88] border border-[#1a263d] hover:border-[#00ff88]/40 text-xs font-bold transition active:scale-95 shrink-0 ml-2"
+                title="Change Name, Avatar & Settings"
+              >
+                <Settings className="w-3.5 h-3.5" />
+                <span>Change Name</span>
+              </button>
+            </div>
+          </div>
+
           <div className="flex flex-wrap items-center justify-center gap-2">
             {/* Host Controls Quick Edit Button */}
             {isCustomRoom && isHost && (
