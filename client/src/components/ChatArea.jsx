@@ -177,6 +177,24 @@ export default function ChatArea({ onOpenShareModal, onOpenRoomModal, onOpenRoom
               : 'You are connected to this local Wi-Fi network. Anyone on the same network joins automatically.'}
           </p>
 
+          {/* Secure Context Switcher for LAN Wi-Fi devices */}
+          {typeof window !== 'undefined' && window.location.protocol === 'http:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && (
+            <div className="mb-3 p-2.5 bg-[#00f0ff]/10 border border-[#00f0ff]/30 rounded-xl text-left">
+              <div className="flex items-center justify-between">
+                <div className="text-[11px] text-[#00f0ff]">
+                  <p className="font-bold">📱 Enable Camera & Mic on Phone / Wi-Fi</p>
+                  <p className="text-zinc-400 text-[10px]">Mobile browsers require HTTPS for camera & audio calls.</p>
+                </div>
+                <a
+                  href={`https://${window.location.hostname}:3443`}
+                  className="px-2.5 py-1.5 bg-[#00f0ff] hover:bg-[#00f0ff]/80 text-black text-[10px] font-bold rounded-lg transition shrink-0 ml-2"
+                >
+                  Open HTTPS
+                </a>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center justify-center gap-2">
             {/* Host Controls Quick Edit Button */}
             {isCustomRoom && isHost && (
