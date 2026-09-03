@@ -15,6 +15,7 @@ import { getAvatarSvg } from '../utils/avatar';
 export default function VideoCallModal() {
   const {
     callState,
+    callStatusText,
     isVideoCall,
     callerInfo,
     remoteUser,
@@ -113,7 +114,7 @@ export default function VideoCallModal() {
             {remoteUser?.name || 'User'}
           </h3>
           <p className="text-xs text-zinc-400 font-semibold mb-6 animate-pulse">
-            Calling...
+            {callStatusText || 'Calling...'}
           </p>
 
           <button
@@ -158,7 +159,7 @@ export default function VideoCallModal() {
             </h3>
             <p className="text-xs text-[#00ff88] mt-1 font-semibold flex items-center space-x-1.5">
               <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
-              <span>Voice Connected</span>
+              <span>{callStatusText || 'Voice Connected'}</span>
             </p>
           </div>
         )}

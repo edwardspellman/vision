@@ -4,6 +4,7 @@ import { sound } from '../utils/sound';
 
 const WebRTCContext = createContext();
 
+// Enhanced ICE Servers with Public STUN & Free OpenRelay TURN for strict firewalls/Wi-Fi routers
 const ICE_SERVERS = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
@@ -11,8 +12,19 @@ const ICE_SERVERS = {
     { urls: 'stun:stun2.l.google.com:19302' },
     { urls: 'stun:stun3.l.google.com:19302' },
     { urls: 'stun:stun4.l.google.com:19302' },
-    { urls: 'stun:global.stun.twilio.com:3478' }
-  ]
+    { urls: 'stun:global.stun.twilio.com:3478' },
+    {
+      urls: [
+        'stun:openrelay.metered.ca:80',
+        'turn:openrelay.metered.ca:80',
+        'turn:openrelay.metered.ca:443',
+        'turn:openrelay.metered.ca:443?transport=tcp'
+      ],
+      username: 'openrelay',
+      credential: 'openrelay'
+    }
+  ],
+  iceCandidatePoolSize: 10
 };
 
 export function WebRTCProvider({ children }) {
@@ -20,6 +32,7 @@ export function WebRTCProvider({ children }) {
 
   // 1-on-1 Call States
   const [callState, setCallState] = useState('idle'); // 'idle' | 'calling' | 'incoming' | 'connected'
+  const [callStatusText, setCallStatusText] = useState('');
   const [isVideoCall, setIsVideoCall] = useState(true);
   const [callerInfo, setCallerInfo] = useState(null);
   const [remoteUser, setRemoteUser] = useState(null);
@@ -70,14 +83,16 @@ export function WebRTCProvider({ children }) {
     // Check if mediaDevices API exists
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const lanHttpsUrl = `https://${window.location.hostname}:3443`;
       if (!isLocalhost && window.location.protocol !== 'https:') {
-        alert(
-          'Camera and Microphone access requires a Secure Context (HTTPS or localhost).\n\n' +
-          'To use calling over LAN HTTP (e.g. ' + window.location.origin + '):\n' +
-          '1. Open chrome://flags/#unsafely-treat-insecure-origin-as-secure in Chrome\n' +
-          '2. Add ' + window.location.origin + ' and enable it\n' +
-          '3. Relaunch your browser.'
+        const proceed = window.confirm(
+          `📱 Mobile & Wi-Fi Camera/Microphone Access Notice\n\n` +
+          `Modern browsers block camera & audio calls over plain HTTP (${window.location.origin}).\n\n` +
+          `Would you like to switch to the secure HTTPS server now (${lanHttpsUrl})?`
         );
+        if (proceed) {
+          window.location.href = lanHttpsUrl;
+        }
       }
       throw new Error('MEDIA_DEVICES_NOT_SUPPORTED');
     }
@@ -115,6 +130,7 @@ export function WebRTCProvider({ children }) {
       });
     } catch (err) {
       console.error('All media devices acquisition failed:', err);
+      alert('Could not access microphone or camera. Please make sure permissions are allowed in your browser settings.');
       throw err;
     }
   };
@@ -190,6 +206,7 @@ export function WebRTCProvider({ children }) {
       setCallerInfo({ socketId: callerSocketId, user: callerUser });
       setIsVideoCall(isVideo);
       setCallState('incoming');
+      setCallStatusText('Incoming Call...');
       sound.startRingtone();
     });
 
@@ -197,6 +214,7 @@ export function WebRTCProvider({ children }) {
       sound.playCallConnected();
       setRemoteUser(responderUser);
       setCallState('connected');
+      setCallStatusText('Connecting peer-to-peer stream...');
       
       try {
         const pc = createPeerConnection(responderSocketId);
@@ -213,12 +231,13 @@ export function WebRTCProvider({ children }) {
 
     socket.on('webrtc_call_rejected', ({ responderUser }) => {
       sound.stopRingtone();
-      alert(`${responderUser?.name || 'Peer'} declined the call.`);
+      alert(`${responderUser?.name || 'Peer'} is busy or declined the call.`);
       cleanupCall();
     });
 
     socket.on('webrtc_offer', async ({ callerSocketId, sdp }) => {
       try {
+        setCallStatusText('Negotiating connection...');
         let pc = peerConnectionRef.current;
         if (!pc) {
           pc = createPeerConnection(callerSocketId);
@@ -239,6 +258,7 @@ export function WebRTCProvider({ children }) {
         if (peerConnectionRef.current) {
           await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(sdp));
           await flush1on1IceQueue(peerConnectionRef.current);
+          setCallStatusText('Connected');
         }
       } catch (err) {
         console.error('Failed handling 1-on-1 answer:', err);
@@ -359,10 +379,19 @@ export function WebRTCProvider({ children }) {
       });
     }
 
+    pc.oniceconnectionstatechange = () => {
+      if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+        setCallStatusText('Connected');
+      } else if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+        setCallStatusText('Reconnecting media...');
+      }
+    };
+
     pc.ontrack = (event) => {
       if (event.streams && event.streams[0]) {
         const stream = event.streams[0];
         setRemoteStream(stream);
+        setCallStatusText('Connected');
         if (remoteVideoRef.current) {
           remoteVideoRef.current.srcObject = stream;
           remoteVideoRef.current.play().catch(() => {});
@@ -433,6 +462,7 @@ export function WebRTCProvider({ children }) {
       setRemoteUser(targetUser);
       setIsVideoCall(isVideo);
       setCallState('calling');
+      setCallStatusText('Requesting permissions & calling...');
       sound.startRingtone();
 
       const stream = await getMediaStream(isVideo);
@@ -443,6 +473,8 @@ export function WebRTCProvider({ children }) {
         localVideoRef.current.srcObject = stream;
         localVideoRef.current.play().catch(() => {});
       }
+
+      setCallStatusText('Ringing...');
 
       socket.emit('webrtc_call_user', {
         targetSocketId,
@@ -461,6 +493,7 @@ export function WebRTCProvider({ children }) {
       sound.stopRingtone();
       sound.playCallConnected();
       setCallState('connected');
+      setCallStatusText('Connecting audio & video...');
       setRemoteUser(callerInfo?.user);
 
       const stream = await getMediaStream(isVideoCall);
@@ -526,6 +559,7 @@ export function WebRTCProvider({ children }) {
     setCallerInfo(null);
     setRemoteUser(null);
     setCallState('idle');
+    setCallStatusText('');
     setIsMuted(false);
     setIsCameraOff(false);
     setIsScreenSharing(false);
@@ -761,6 +795,7 @@ export function WebRTCProvider({ children }) {
   const value = {
     // 1-on-1 Call state
     callState,
+    callStatusText,
     isVideoCall,
     callerInfo,
     remoteUser,
