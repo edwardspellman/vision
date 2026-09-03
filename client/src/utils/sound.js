@@ -1,5 +1,5 @@
 /**
- * Web Audio API procedural synthesizer for high-tech terminal sound effects
+ * Web Audio API procedural synthesizer for high-tech terminal sound effects and call ringtones
  */
 
 class HackerAudio {
@@ -7,6 +7,7 @@ class HackerAudio {
     this.ctx = null;
     this.muted = false;
     this.volume = 0.5;
+    this.ringInterval = null;
 
     const savedMuted = localStorage.getItem('vision_sound_muted');
     if (savedMuted !== null) {
@@ -29,6 +30,9 @@ class HackerAudio {
   setMuted(muted) {
     this.muted = muted;
     localStorage.setItem('vision_sound_muted', muted);
+    if (muted) {
+      this.stopRingtone();
+    }
   }
 
   // Crisp terminal data packet received chirp
@@ -133,6 +137,78 @@ class HackerAudio {
 
       osc.start(now);
       osc.stop(now + 0.08);
+    } catch (e) {}
+  }
+
+  // Ringtone loop for incoming and outgoing calls
+  startRingtone() {
+    if (this.muted || this.ringInterval) return;
+    this.init();
+
+    const ring = () => {
+      if (!this.ctx || this.muted) return;
+      try {
+        const now = this.ctx.currentTime;
+        [0, 0.2].forEach((offset) => {
+          const osc1 = this.ctx.createOscillator();
+          const osc2 = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          osc1.type = 'sine';
+          osc1.frequency.setValueAtTime(440, now + offset);
+          osc2.type = 'sine';
+          osc2.frequency.setValueAtTime(480, now + offset);
+
+          gain.gain.setValueAtTime(this.volume * 0.12, now + offset);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.15);
+
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc1.start(now + offset);
+          osc2.start(now + offset);
+          osc1.stop(now + offset + 0.15);
+          osc2.stop(now + offset + 0.15);
+        });
+      } catch (e) {}
+    };
+
+    ring();
+    this.ringInterval = setInterval(ring, 2000);
+  }
+
+  stopRingtone() {
+    if (this.ringInterval) {
+      clearInterval(this.ringInterval);
+      this.ringInterval = null;
+    }
+  }
+
+  // Call connected chime
+  playCallConnected() {
+    this.stopRingtone();
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      [523.25, 659.25, 783.99].forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+
+        gain.gain.setValueAtTime(this.volume * 0.12, now + idx * 0.06);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.12);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now + idx * 0.06);
+        osc.stop(now + idx * 0.06 + 0.12);
+      });
     } catch (e) {}
   }
 }

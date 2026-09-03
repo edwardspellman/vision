@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   PhoneOff, 
   Mic, 
@@ -11,18 +11,21 @@ import {
   Users, 
   Radio, 
   Volume2,
-  Crown
+  Crown,
+  Monitor,
+  MonitorOff
 } from 'lucide-react';
 import { useWebRTC } from '../context/WebRTCContext';
 import { useSocket } from '../context/SocketContext';
 import { getAvatarSvg } from '../utils/avatar';
 
 function RemoteVideoTile({ remote }) {
-  const videoRef = React.useRef(null);
+  const videoRef = useRef(null);
 
   useEffect(() => {
     if (videoRef.current && remote.stream) {
       videoRef.current.srcObject = remote.stream;
+      videoRef.current.play().catch(() => {});
     }
   }, [remote.stream]);
 
@@ -39,9 +42,9 @@ function RemoteVideoTile({ remote }) {
 
       {!hasVideoTrack && (
         <div className="flex flex-col items-center justify-center space-y-2">
-          <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-[#161f30] shadow-md">
+          <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-[#161f30] shadow-md bg-black">
             <img
-              src={getAvatarSvg(remote.participant?.avatar || remote.participant?.name)}
+              src={getAvatarSvg(remote.participant?.avatar || remote.participant?.name || 'peer')}
               alt={remote.participant?.name}
               className="w-full h-full object-cover"
             />
@@ -67,6 +70,7 @@ export default function RoomCallModal() {
     isJoinedRoomCall,
     isRoomCallModalOpen,
     setIsRoomCallModalOpen,
+    roomLocalStream,
     roomRemoteStreams,
     roomLocalVideoRef,
     isRoomMuted,
@@ -80,6 +84,14 @@ export default function RoomCallModal() {
 
   const [isMinimized, setIsMinimized] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
+
+  // Attach local stream to local video element
+  useEffect(() => {
+    if (roomLocalVideoRef.current && roomLocalStream) {
+      roomLocalVideoRef.current.srcObject = roomLocalStream;
+      roomLocalVideoRef.current.play().catch(() => {});
+    }
+  }, [roomLocalStream, isJoinedRoomCall, roomLocalVideoRef]);
 
   useEffect(() => {
     let interval = null;
@@ -102,6 +114,7 @@ export default function RoomCallModal() {
   };
 
   const totalParticipants = roomRemoteStreams.length + 1; // +1 for local user
+  const hasLocalVideo = roomLocalStream && roomLocalStream.getVideoTracks().some(t => t.enabled && t.readyState === 'live');
 
   return (
     <div className={`fixed z-50 transition-all duration-300 font-mono select-none ${
@@ -149,12 +162,12 @@ export default function RoomCallModal() {
               autoPlay
               playsInline
               muted
-              className={`w-full h-full object-cover mirror ${!isRoomCameraOff ? 'block' : 'hidden'}`}
+              className={`w-full h-full object-cover ${hasLocalVideo && !isRoomCameraOff ? 'block' : 'hidden'}`}
             />
 
-            {isRoomCameraOff && (
+            {(!hasLocalVideo || isRoomCameraOff) && (
               <div className="flex flex-col items-center justify-center space-y-2">
-                <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-[#00ff88]/40 shadow-md">
+                <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-[#00ff88]/30 shadow-md bg-black">
                   <img
                     src={getAvatarSvg(user.avatar || user.name)}
                     alt={user.name}
@@ -167,78 +180,75 @@ export default function RoomCallModal() {
               </div>
             )}
 
-            {/* Overlay Badge */}
-            <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/70 backdrop-blur-md rounded-lg text-[10px] font-bold text-[#00ff88] flex items-center space-x-1.5 border border-[#00ff88]/30">
-              <span className="w-2 h-2 rounded-full bg-[#00ff88]" />
+            {/* Local Badge */}
+            <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/70 backdrop-blur-md rounded-lg text-[10px] font-bold text-[#00ff88] flex items-center space-x-1 border border-[#00ff88]/30">
               <span>You {isRoomMuted && '(Muted)'}</span>
             </div>
           </div>
 
-          {/* Remote Participants */}
+          {/* Remote Participants Tiles */}
           {roomRemoteStreams.map((remote) => (
             <RemoteVideoTile key={remote.socketId} remote={remote} />
           ))}
 
-          {/* Waiting for more peers placeholder if only 1 */}
+          {/* Empty Waiting State */}
           {roomRemoteStreams.length === 0 && (
-            <div className="border-2 border-dashed border-[#161f30] rounded-2xl aspect-video flex flex-col items-center justify-center p-6 text-center text-zinc-500">
-              <Users className="w-8 h-8 text-zinc-600 mb-2 animate-pulse" />
-              <p className="text-xs font-bold text-zinc-400">Waiting for members to join...</p>
-              <p className="text-[10px] text-zinc-600 mt-1">Anyone in this room can click "Join Call"</p>
+            <div className="col-span-full py-8 text-center text-zinc-500 text-xs">
+              <p>Waiting for other peers in this room to join the call...</p>
+              <p className="text-[11px] text-zinc-600 mt-1">Other members will see the live call banner in chat.</p>
             </div>
           )}
         </div>
       )}
 
-      {/* Bottom Control Dock */}
-      <div className="p-3 bg-[#05080f]/90 border-t border-[#161f30] rounded-b-2xl flex items-center justify-center space-x-3 shrink-0">
-        {/* Toggle Mute */}
+      {/* Controls Bar */}
+      <div className={`flex items-center justify-center space-x-3 bg-[#05080f] border-t border-[#161f30] rounded-b-2xl pb-safe ${
+        isMinimized ? 'p-2.5' : 'p-4 shrink-0'
+      }`}>
         <button
           onClick={toggleRoomMic}
-          className={`p-3 rounded-xl border transition active:scale-95 ${
+          className={`p-3 rounded-full border transition active:scale-90 ${
             isRoomMuted 
-              ? 'bg-rose-500/20 border-rose-500/40 text-rose-400' 
-              : 'bg-[#0b101c] border-[#1a263d] text-zinc-200 hover:text-[#00ff88] hover:border-[#00ff88]/40'
+              ? 'bg-[#ff3366] text-black border-[#ff3366]' 
+              : 'bg-[#0b101c] text-zinc-300 border-[#1a263d] hover:border-[#00ff88]'
           }`}
-          title={isRoomMuted ? 'Unmute microphone' : 'Mute microphone'}
+          title={isRoomMuted ? 'Unmute' : 'Mute'}
         >
           {isRoomMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
         </button>
 
-        {/* Toggle Camera */}
         <button
           onClick={toggleRoomCamera}
-          className={`p-3 rounded-xl border transition active:scale-95 ${
+          className={`p-3 rounded-full border transition active:scale-90 ${
             isRoomCameraOff 
-              ? 'bg-rose-500/20 border-rose-500/40 text-rose-400' 
-              : 'bg-[#0b101c] border-[#1a263d] text-zinc-200 hover:text-[#00f0ff] hover:border-[#00f0ff]/40'
+              ? 'bg-[#ff3366] text-black border-[#ff3366]' 
+              : 'bg-[#0b101c] text-zinc-300 border-[#1a263d] hover:border-[#00ff88]'
           }`}
-          title={isRoomCameraOff ? 'Turn camera on' : 'Turn camera off'}
+          title={isRoomCameraOff ? 'Turn Camera On' : 'Turn Camera Off'}
         >
           {isRoomCameraOff ? <VideoOff className="w-4 h-4" /> : <Video className="w-4 h-4" />}
         </button>
 
-        {/* Toggle Screen Share */}
-        <button
-          onClick={toggleRoomScreenShare}
-          className={`p-3 rounded-xl border transition active:scale-95 ${
-            isRoomScreenSharing 
-              ? 'bg-[#00ff88]/20 border-[#00ff88]/40 text-[#00ff88]' 
-              : 'bg-[#0b101c] border-[#1a263d] text-zinc-200 hover:text-[#00ff88] hover:border-[#00ff88]/40'
-          }`}
-          title={isRoomScreenSharing ? 'Stop screen sharing' : 'Share your screen'}
-        >
-          <Share2 className="w-4 h-4" />
-        </button>
+        {!isMinimized && (
+          <button
+            onClick={toggleRoomScreenShare}
+            className={`p-3 rounded-full border transition active:scale-90 ${
+              isRoomScreenSharing 
+                ? 'bg-[#00f0ff] text-black border-[#00f0ff]' 
+                : 'bg-[#0b101c] text-zinc-300 border-[#1a263d] hover:border-[#00f0ff]'
+            }`}
+            title={isRoomScreenSharing ? 'Stop Screen Share' : 'Share Screen'}
+          >
+            {isRoomScreenSharing ? <MonitorOff className="w-4 h-4" /> : <Monitor className="w-4 h-4" />}
+          </button>
+        )}
 
-        {/* Leave Call Button */}
         <button
           onClick={leaveRoomCall}
-          className="px-4 py-3 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs flex items-center space-x-1.5 transition shadow-lg active:scale-95"
+          className="p-3 bg-[#ff3366] hover:bg-[#ff1a53] text-black rounded-full font-bold transition flex items-center space-x-1 shadow-lg active:scale-90"
           title="Leave Room Call"
         >
           <PhoneOff className="w-4 h-4" />
-          <span>Leave Call</span>
         </button>
       </div>
     </div>

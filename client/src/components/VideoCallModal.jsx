@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { 
   Phone, 
   PhoneOff, 
@@ -21,6 +21,8 @@ export default function VideoCallModal() {
     isMuted,
     isCameraOff,
     isScreenSharing,
+    localStream,
+    remoteStream,
     localVideoRef,
     remoteVideoRef,
     acceptCall,
@@ -31,6 +33,22 @@ export default function VideoCallModal() {
     toggleScreenShare
   } = useWebRTC();
 
+  // Attach local stream when element mounts or stream changes
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+      localVideoRef.current.play().catch(() => {});
+    }
+  }, [localStream, callState, localVideoRef]);
+
+  // Attach remote stream when element mounts or stream changes
+  useEffect(() => {
+    if (remoteVideoRef.current && remoteStream) {
+      remoteVideoRef.current.srcObject = remoteStream;
+      remoteVideoRef.current.play().catch(() => {});
+    }
+  }, [remoteStream, callState, remoteVideoRef]);
+
   if (callState === 'idle') return null;
 
   // Incoming Call Dialog
@@ -38,7 +56,7 @@ export default function VideoCallModal() {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in font-mono select-none">
         <div className="w-full max-w-sm bg-[#080d17] rounded-2xl border border-[#00ff88]/50 shadow-2xl p-6 text-center">
-          <div className="w-16 h-16 rounded-xl border border-[#00ff88]/40 overflow-hidden mx-auto mb-3 animate-pulse shadow-lg">
+          <div className="w-16 h-16 rounded-xl border border-[#00ff88]/40 overflow-hidden mx-auto mb-3 animate-pulse shadow-lg bg-black">
             <img
               src={getAvatarSvg(callerInfo?.user?.avatar || callerInfo?.user?.name || 'caller')}
               alt="Caller"
@@ -57,7 +75,7 @@ export default function VideoCallModal() {
           <div className="flex items-center justify-center space-x-4">
             <button
               onClick={rejectCall}
-              className="px-5 py-2.5 bg-[#ff3366] hover:bg-[#ff1a53] text-black font-bold text-xs rounded-xl transition flex items-center space-x-1.5 shadow-lg"
+              className="px-5 py-2.5 bg-[#ff3366] hover:bg-[#ff1a53] text-black font-bold text-xs rounded-xl transition flex items-center space-x-1.5 shadow-lg active:scale-95"
               title="Decline"
             >
               <PhoneOff className="w-4 h-4" />
@@ -66,7 +84,7 @@ export default function VideoCallModal() {
 
             <button
               onClick={acceptCall}
-              className="px-5 py-2.5 bg-[#00ff88] hover:bg-[#00e67a] text-black font-bold text-xs rounded-xl transition flex items-center space-x-1.5 shadow-lg animate-pulse"
+              className="px-5 py-2.5 bg-[#00ff88] hover:bg-[#00e67a] text-black font-bold text-xs rounded-xl transition flex items-center space-x-1.5 shadow-lg animate-pulse active:scale-95"
               title="Accept"
             >
               <Phone className="w-4 h-4" />
@@ -83,7 +101,7 @@ export default function VideoCallModal() {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in font-mono select-none">
         <div className="w-full max-w-sm bg-[#080d17] rounded-2xl border border-[#161f30] p-6 text-center shadow-2xl">
-          <div className="w-16 h-16 rounded-xl border border-[#161f30] overflow-hidden mx-auto mb-3">
+          <div className="w-16 h-16 rounded-xl border border-[#161f30] overflow-hidden mx-auto mb-3 bg-black">
             <img
               src={getAvatarSvg(remoteUser?.avatar || remoteUser?.name || 'user')}
               alt="User"
@@ -100,7 +118,7 @@ export default function VideoCallModal() {
 
           <button
             onClick={endCall}
-            className="px-5 py-2.5 bg-[#ff3366] hover:bg-[#ff1a53] text-black font-bold text-xs rounded-xl transition mx-auto flex items-center space-x-1.5 shadow-lg"
+            className="px-5 py-2.5 bg-[#ff3366] hover:bg-[#ff1a53] text-black font-bold text-xs rounded-xl transition mx-auto flex items-center space-x-1.5 shadow-lg active:scale-95"
             title="Cancel"
           >
             <PhoneOff className="w-4 h-4" />
@@ -112,6 +130,8 @@ export default function VideoCallModal() {
   }
 
   // Active Call Screen
+  const hasRemoteVideo = remoteStream && remoteStream.getVideoTracks().some(t => t.enabled && t.readyState === 'live');
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black font-mono">
       {/* Remote Video */}
@@ -120,13 +140,13 @@ export default function VideoCallModal() {
           ref={remoteVideoRef}
           autoPlay
           playsInline
-          className="w-full h-full object-contain"
+          className={`w-full h-full object-contain ${hasRemoteVideo ? 'block' : 'hidden'}`}
         />
 
         {/* Audio fallback */}
-        {(!isVideoCall || !remoteVideoRef.current?.srcObject) && (
+        {(!isVideoCall || !hasRemoteVideo) && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#05080f]">
-            <div className="w-24 h-24 rounded-2xl border border-[#00ff88]/40 overflow-hidden mb-3 shadow-2xl">
+            <div className="w-24 h-24 rounded-2xl border border-[#00ff88]/40 overflow-hidden mb-3 shadow-2xl bg-black">
               <img
                 src={getAvatarSvg(remoteUser?.avatar || remoteUser?.name || 'remote')}
                 alt="Remote"
@@ -136,7 +156,10 @@ export default function VideoCallModal() {
             <h3 className="text-lg font-bold text-zinc-100">
               {remoteUser?.name || 'Connected User'}
             </h3>
-            <p className="text-xs text-[#00ff88] mt-1 font-semibold">Active Call</p>
+            <p className="text-xs text-[#00ff88] mt-1 font-semibold flex items-center space-x-1.5">
+              <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
+              <span>Voice Connected</span>
+            </p>
           </div>
         )}
 

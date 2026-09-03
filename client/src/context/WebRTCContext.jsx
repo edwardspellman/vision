@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { useSocket } from './SocketContext';
+import { sound } from '../utils/sound';
 
 const WebRTCContext = createContext();
 
@@ -7,7 +8,10 @@ const ICE_SERVERS = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' }
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    { urls: 'stun:global.stun.twilio.com:3478' }
   ]
 };
 
@@ -22,12 +26,15 @@ export function WebRTCProvider({ children }) {
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [localStream, setLocalStream] = useState(null);
+  const [remoteStream, setRemoteStream] = useState(null);
 
   // Group Room Call States
   const [roomCallState, setRoomCallState] = useState({ isLive: false, participantCount: 0, participants: [] });
   const [isJoinedRoomCall, setIsJoinedRoomCall] = useState(false);
   const [isRoomCallModalOpen, setIsRoomCallModalOpen] = useState(false);
   const [isRoomCallVideo, setIsRoomCallVideo] = useState(true);
+  const [roomLocalStream, setRoomLocalStream] = useState(null);
   const [roomRemoteStreams, setRoomRemoteStreams] = useState([]); // [{ socketId, participant, stream }]
   const [isRoomMuted, setIsRoomMuted] = useState(false);
   const [isRoomCameraOff, setIsRoomCameraOff] = useState(false);
@@ -39,11 +46,13 @@ export function WebRTCProvider({ children }) {
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const activePeerSocketId = useRef(null);
+  const oneOnOneIceQueueRef = useRef([]);
 
   // Group Call Refs
   const roomLocalStreamRef = useRef(null);
   const roomPeerConnectionsRef = useRef(new Map()); // socketId -> RTCPeerConnection
   const roomLocalVideoRef = useRef(null);
+  const roomIceQueuesRef = useRef(new Map()); // socketId -> Array of ICE candidates
 
   // Sync Room Call State when entering room
   useEffect(() => {
@@ -53,6 +62,119 @@ export function WebRTCProvider({ children }) {
       setRoomCallState({ isLive: false, participantCount: 0, participants: [] });
     }
   }, [currentRoom]);
+
+  /**
+   * Helper to safely acquire microphone & camera with audio fallback & browser security warnings
+   */
+  const getMediaStream = async (requestedVideo = true) => {
+    // Check if mediaDevices API exists
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      if (!isLocalhost && window.location.protocol !== 'https:') {
+        alert(
+          'Camera and Microphone access requires a Secure Context (HTTPS or localhost).\n\n' +
+          'To use calling over LAN HTTP (e.g. ' + window.location.origin + '):\n' +
+          '1. Open chrome://flags/#unsafely-treat-insecure-origin-as-secure in Chrome\n' +
+          '2. Add ' + window.location.origin + ' and enable it\n' +
+          '3. Relaunch your browser.'
+        );
+      }
+      throw new Error('MEDIA_DEVICES_NOT_SUPPORTED');
+    }
+
+    try {
+      // First attempt: Request video + audio
+      if (requestedVideo) {
+        try {
+          return await navigator.mediaDevices.getUserMedia({
+            video: {
+              width: { ideal: 640 },
+              height: { ideal: 480 },
+              facingMode: 'user'
+            },
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true
+            }
+          });
+        } catch (videoErr) {
+          console.warn('Camera failed or not present, falling back to audio only:', videoErr);
+          setIsCameraOff(true);
+        }
+      }
+
+      // Fallback attempt: Audio only
+      return await navigator.mediaDevices.getUserMedia({
+        video: false,
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
+    } catch (err) {
+      console.error('All media devices acquisition failed:', err);
+      throw err;
+    }
+  };
+
+  /**
+   * Safe ICE Candidate Helpers
+   */
+  const add1on1IceCandidate = async (pc, candidate) => {
+    if (!pc || !candidate) return;
+    if (!pc.remoteDescription || !pc.remoteDescription.type) {
+      oneOnOneIceQueueRef.current.push(candidate);
+    } else {
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (e) {
+        console.warn('Failed adding 1-on-1 ICE candidate:', e);
+      }
+    }
+  };
+
+  const flush1on1IceQueue = async (pc) => {
+    if (!pc) return;
+    while (oneOnOneIceQueueRef.current.length > 0) {
+      const candidate = oneOnOneIceQueueRef.current.shift();
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (e) {
+        console.warn('Failed adding queued 1-on-1 candidate:', e);
+      }
+    }
+  };
+
+  const addRoomIceCandidate = async (pc, candidate, socketId) => {
+    if (!pc || !candidate) return;
+    if (!pc.remoteDescription || !pc.remoteDescription.type) {
+      if (!roomIceQueuesRef.current.has(socketId)) {
+        roomIceQueuesRef.current.set(socketId, []);
+      }
+      roomIceQueuesRef.current.get(socketId).push(candidate);
+    } else {
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (e) {
+        console.warn(`Failed adding Room ICE candidate for ${socketId}:`, e);
+      }
+    }
+  };
+
+  const flushRoomIceQueue = async (pc, socketId) => {
+    if (!pc) return;
+    const queue = roomIceQueuesRef.current.get(socketId) || [];
+    while (queue.length > 0) {
+      const candidate = queue.shift();
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (e) {
+        console.warn(`Failed adding queued Room ICE candidate for ${socketId}:`, e);
+      }
+    }
+  };
 
   // Setup WebRTC socket listeners
   useEffect(() => {
@@ -68,36 +190,47 @@ export function WebRTCProvider({ children }) {
       setCallerInfo({ socketId: callerSocketId, user: callerUser });
       setIsVideoCall(isVideo);
       setCallState('incoming');
+      sound.startRingtone();
     });
 
     socket.on('webrtc_call_accepted', async ({ responderSocketId, responderUser, isVideo }) => {
+      sound.playCallConnected();
       setRemoteUser(responderUser);
       setCallState('connected');
       
       try {
         const pc = createPeerConnection(responderSocketId);
-        const offer = await pc.createOffer();
+        const offer = await pc.createOffer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: isVideo
+        });
         await pc.setLocalDescription(offer);
         socket.emit('webrtc_offer', { targetSocketId: responderSocketId, sdp: offer });
       } catch (err) {
-        console.error('Failed creating offer:', err);
+        console.error('Failed creating 1-on-1 offer:', err);
       }
     });
 
     socket.on('webrtc_call_rejected', ({ responderUser }) => {
-      alert(`${responderUser?.name || 'User'} declined the call.`);
+      sound.stopRingtone();
+      alert(`${responderUser?.name || 'Peer'} declined the call.`);
       cleanupCall();
     });
 
     socket.on('webrtc_offer', async ({ callerSocketId, sdp }) => {
       try {
-        const pc = createPeerConnection(callerSocketId);
+        let pc = peerConnectionRef.current;
+        if (!pc) {
+          pc = createPeerConnection(callerSocketId);
+        }
         await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+        await flush1on1IceQueue(pc);
+
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         socket.emit('webrtc_answer', { targetSocketId: callerSocketId, sdp: answer });
       } catch (err) {
-        console.error('Failed handling offer:', err);
+        console.error('Failed handling 1-on-1 offer:', err);
       }
     });
 
@@ -105,23 +238,21 @@ export function WebRTCProvider({ children }) {
       try {
         if (peerConnectionRef.current) {
           await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(sdp));
+          await flush1on1IceQueue(peerConnectionRef.current);
         }
       } catch (err) {
-        console.error('Failed handling answer:', err);
+        console.error('Failed handling 1-on-1 answer:', err);
       }
     });
 
     socket.on('webrtc_ice_candidate', async ({ senderSocketId, candidate }) => {
-      try {
-        if (peerConnectionRef.current && candidate) {
-          await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
-        }
-      } catch (err) {
-        console.error('Failed adding ICE candidate:', err);
+      if (peerConnectionRef.current) {
+        await add1on1IceCandidate(peerConnectionRef.current, candidate);
       }
     });
 
     socket.on('webrtc_call_ended', () => {
+      sound.stopRingtone();
       cleanupCall();
     });
 
@@ -136,7 +267,10 @@ export function WebRTCProvider({ children }) {
 
       try {
         const pc = createRoomPeerConnection(newPeerSocketId, participant);
-        const offer = await pc.createOffer();
+        const offer = await pc.createOffer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: true
+        });
         await pc.setLocalDescription(offer);
 
         socket.emit('webrtc_room_signal', {
@@ -155,6 +289,7 @@ export function WebRTCProvider({ children }) {
         pc.close();
         roomPeerConnectionsRef.current.delete(leftPeerSocketId);
       }
+      roomIceQueuesRef.current.delete(leftPeerSocketId);
       setRoomRemoteStreams((prev) => prev.filter((p) => p.socketId !== leftPeerSocketId));
     });
 
@@ -166,6 +301,7 @@ export function WebRTCProvider({ children }) {
         if (signal.type === 'offer') {
           const pc = createRoomPeerConnection(senderSocketId, signal.senderParticipant);
           await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+          await flushRoomIceQueue(pc, senderSocketId);
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
 
@@ -177,11 +313,12 @@ export function WebRTCProvider({ children }) {
           const pc = roomPeerConnectionsRef.current.get(senderSocketId);
           if (pc) {
             await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+            await flushRoomIceQueue(pc, senderSocketId);
           }
         } else if (signal.type === 'candidate') {
           const pc = roomPeerConnectionsRef.current.get(senderSocketId);
-          if (pc && signal.candidate) {
-            await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+          if (pc) {
+            await addRoomIceCandidate(pc, signal.candidate, senderSocketId);
           }
         }
       } catch (err) {
@@ -211,6 +348,7 @@ export function WebRTCProvider({ children }) {
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
     }
+    oneOnOneIceQueueRef.current = [];
 
     const pc = new RTCPeerConnection(ICE_SERVERS);
     peerConnectionRef.current = pc;
@@ -222,8 +360,13 @@ export function WebRTCProvider({ children }) {
     }
 
     pc.ontrack = (event) => {
-      if (remoteVideoRef.current && event.streams[0]) {
-        remoteVideoRef.current.srcObject = event.streams[0];
+      if (event.streams && event.streams[0]) {
+        const stream = event.streams[0];
+        setRemoteStream(stream);
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = stream;
+          remoteVideoRef.current.play().catch(() => {});
+        }
       }
     };
 
@@ -247,6 +390,7 @@ export function WebRTCProvider({ children }) {
     if (pc) {
       pc.close();
     }
+    roomIceQueuesRef.current.set(targetSocketId, []);
 
     pc = new RTCPeerConnection(ICE_SERVERS);
     roomPeerConnectionsRef.current.set(targetSocketId, pc);
@@ -260,7 +404,7 @@ export function WebRTCProvider({ children }) {
 
     // When remote media track arrives
     pc.ontrack = (event) => {
-      if (event.streams[0]) {
+      if (event.streams && event.streams[0]) {
         const stream = event.streams[0];
         setRoomRemoteStreams((prev) => {
           const filtered = prev.filter((p) => p.socketId !== targetSocketId);
@@ -289,15 +433,15 @@ export function WebRTCProvider({ children }) {
       setRemoteUser(targetUser);
       setIsVideoCall(isVideo);
       setCallState('calling');
+      sound.startRingtone();
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: isVideo,
-        audio: true
-      });
+      const stream = await getMediaStream(isVideo);
       localStreamRef.current = stream;
+      setLocalStream(stream);
 
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
+        localVideoRef.current.play().catch(() => {});
       }
 
       socket.emit('webrtc_call_user', {
@@ -306,39 +450,44 @@ export function WebRTCProvider({ children }) {
         isVideo
       });
     } catch (err) {
-      console.error('Media devices access failed:', err);
-      alert('Could not access camera or microphone. Please check browser permissions.');
+      console.error('Start call error:', err);
+      sound.stopRingtone();
       cleanupCall();
     }
   };
 
   const acceptCall = async () => {
     try {
+      sound.stopRingtone();
+      sound.playCallConnected();
       setCallState('connected');
-      setRemoteUser(callerInfo.user);
+      setRemoteUser(callerInfo?.user);
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: isVideoCall,
-        audio: true
-      });
+      const stream = await getMediaStream(isVideoCall);
       localStreamRef.current = stream;
+      setLocalStream(stream);
 
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
+        localVideoRef.current.play().catch(() => {});
       }
+
+      // Pre-create peer connection
+      createPeerConnection(callerInfo.socketId);
 
       socket.emit('webrtc_accept_call', {
         callerSocketId: callerInfo.socketId,
         isVideo: isVideoCall
       });
     } catch (err) {
-      console.error('Accept call failed:', err);
-      alert('Could not access camera/mic to accept the call.');
+      console.error('Accept call error:', err);
+      sound.stopRingtone();
       cleanupCall();
     }
   };
 
   const rejectCall = () => {
+    sound.stopRingtone();
     if (callerInfo && socket) {
       socket.emit('webrtc_reject_call', {
         callerSocketId: callerInfo.socketId
@@ -348,6 +497,7 @@ export function WebRTCProvider({ children }) {
   };
 
   const endCall = () => {
+    sound.stopRingtone();
     if (activePeerSocketId.current && socket) {
       socket.emit('webrtc_end_call', {
         targetSocketId: activePeerSocketId.current
@@ -357,6 +507,7 @@ export function WebRTCProvider({ children }) {
   };
 
   const cleanupCall = () => {
+    sound.stopRingtone();
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((track) => track.stop());
       localStreamRef.current = null;
@@ -368,7 +519,10 @@ export function WebRTCProvider({ children }) {
     if (localVideoRef.current) localVideoRef.current.srcObject = null;
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
 
+    oneOnOneIceQueueRef.current = [];
     activePeerSocketId.current = null;
+    setLocalStream(null);
+    setRemoteStream(null);
     setCallerInfo(null);
     setRemoteUser(null);
     setCallState('idle');
@@ -402,6 +556,10 @@ export function WebRTCProvider({ children }) {
 
     if (!isScreenSharing) {
       try {
+        if (!navigator.mediaDevices?.getDisplayMedia) {
+          alert('Screen sharing is not supported on this browser or context.');
+          return;
+        }
         const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
         const screenTrack = screenStream.getVideoTracks()[0];
 
@@ -415,6 +573,7 @@ export function WebRTCProvider({ children }) {
 
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = screenStream;
+          localVideoRef.current.play().catch(() => {});
         }
 
         screenTrack.onended = () => {
@@ -442,6 +601,7 @@ export function WebRTCProvider({ children }) {
     }
     if (localVideoRef.current) {
       localVideoRef.current.srcObject = localStreamRef.current;
+      localVideoRef.current.play().catch(() => {});
     }
     setIsScreenSharing(false);
   };
@@ -454,25 +614,28 @@ export function WebRTCProvider({ children }) {
       setIsRoomCallVideo(isVideo);
       setIsJoinedRoomCall(true);
       setIsRoomCallModalOpen(true);
+      sound.playCallConnected();
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: isVideo,
-        audio: true
-      });
+      const stream = await getMediaStream(isVideo);
       roomLocalStreamRef.current = stream;
+      setRoomLocalStream(stream);
 
       if (roomLocalVideoRef.current) {
         roomLocalVideoRef.current.srcObject = stream;
+        roomLocalVideoRef.current.play().catch(() => {});
       }
 
       socket.emit('join_room_call', { roomId: currentRoom.id, isVideo }, (response) => {
         if (response && response.success) {
-          // If there are existing participants, mesh connect to them
+          // If there are existing participants, create mesh offers to each
           if (response.existingParticipants && response.existingParticipants.length > 0) {
             response.existingParticipants.forEach(async (participant) => {
               try {
                 const pc = createRoomPeerConnection(participant.socketId, participant);
-                const offer = await pc.createOffer();
+                const offer = await pc.createOffer({
+                  offerToReceiveAudio: true,
+                  offerToReceiveVideo: true
+                });
                 await pc.setLocalDescription(offer);
 
                 socket.emit('webrtc_room_signal', {
@@ -491,7 +654,6 @@ export function WebRTCProvider({ children }) {
       });
     } catch (err) {
       console.error('Error starting room call:', err);
-      alert('Could not access microphone/camera for Room Call.');
       leaveRoomCall();
     }
   };
@@ -504,7 +666,9 @@ export function WebRTCProvider({ children }) {
 
     roomPeerConnectionsRef.current.forEach((pc) => pc.close());
     roomPeerConnectionsRef.current.clear();
+    roomIceQueuesRef.current.clear();
 
+    setRoomLocalStream(null);
     setRoomRemoteStreams([]);
     setIsJoinedRoomCall(false);
     setIsRoomCallModalOpen(false);
@@ -542,10 +706,14 @@ export function WebRTCProvider({ children }) {
 
     if (!isRoomScreenSharing) {
       try {
+        if (!navigator.mediaDevices?.getDisplayMedia) {
+          alert('Screen sharing is not supported on this browser or context.');
+          return;
+        }
         const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
         const screenTrack = screenStream.getVideoTracks()[0];
 
-        // Replace track across all peer connections in the mesh
+        // Replace track across all mesh peer connections
         roomPeerConnectionsRef.current.forEach((pc) => {
           const sender = pc.getSenders().find((s) => s.track && s.track.kind === 'video');
           if (sender) {
@@ -555,6 +723,7 @@ export function WebRTCProvider({ children }) {
 
         if (roomLocalVideoRef.current) {
           roomLocalVideoRef.current.srcObject = screenStream;
+          roomLocalVideoRef.current.play().catch(() => {});
         }
 
         screenTrack.onended = () => {
@@ -563,7 +732,7 @@ export function WebRTCProvider({ children }) {
 
         setIsRoomScreenSharing(true);
       } catch (err) {
-        console.error('Room screen share failed:', err);
+        console.error('Error sharing screen in room call:', err);
       }
     } else {
       stopRoomScreenSharing();
@@ -583,52 +752,59 @@ export function WebRTCProvider({ children }) {
 
     if (roomLocalVideoRef.current) {
       roomLocalVideoRef.current.srcObject = roomLocalStreamRef.current;
+      roomLocalVideoRef.current.play().catch(() => {});
     }
+
     setIsRoomScreenSharing(false);
   };
 
-  return (
-    <WebRTCContext.Provider
-      value={{
-        // 1-on-1 Call
-        callState,
-        isVideoCall,
-        callerInfo,
-        remoteUser,
-        isMuted,
-        isCameraOff,
-        isScreenSharing,
-        localVideoRef,
-        remoteVideoRef,
-        startCall,
-        acceptCall,
-        rejectCall,
-        endCall,
-        toggleMic,
-        toggleCamera,
-        toggleScreenShare,
+  const value = {
+    // 1-on-1 Call state
+    callState,
+    isVideoCall,
+    callerInfo,
+    remoteUser,
+    isMuted,
+    isCameraOff,
+    isScreenSharing,
+    localStream,
+    remoteStream,
+    localVideoRef,
+    remoteVideoRef,
+    startCall,
+    acceptCall,
+    rejectCall,
+    endCall,
+    toggleMic,
+    toggleCamera,
+    toggleScreenShare,
 
-        // Group Room Call
-        roomCallState,
-        isJoinedRoomCall,
-        isRoomCallModalOpen,
-        setIsRoomCallModalOpen,
-        isRoomCallVideo,
-        roomRemoteStreams,
-        roomLocalVideoRef,
-        isRoomMuted,
-        isRoomCameraOff,
-        isRoomScreenSharing,
-        startOrJoinRoomCall,
-        leaveRoomCall,
-        toggleRoomMic,
-        toggleRoomCamera,
-        toggleRoomScreenShare
-      }}
-    >
-      {children}
-    </WebRTCContext.Provider>
-  );
+    // Group Room Call state
+    roomCallState,
+    isJoinedRoomCall,
+    isRoomCallModalOpen,
+    setIsRoomCallModalOpen,
+    isRoomCallVideo,
+    roomLocalStream,
+    roomRemoteStreams,
+    roomLocalVideoRef,
+    isRoomMuted,
+    isRoomCameraOff,
+    isRoomScreenSharing,
+    startOrJoinRoomCall,
+    leaveRoomCall,
+    toggleRoomMic,
+    toggleRoomCamera,
+    toggleRoomScreenShare
+  };
+
+  return <WebRTCContext.Provider value={value}>{children}</WebRTCContext.Provider>;
 }
 
-export const useWebRTC = () => useContext(WebRTCContext);
+export function useWebRTC() {
+  const context = useContext(WebRTCContext);
+  if (!context) {
+    throw new Error('useWebRTC must be used within a WebRTCProvider');
+  }
+  return context;
+}
