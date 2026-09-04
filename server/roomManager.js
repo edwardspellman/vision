@@ -72,7 +72,7 @@ class RoomManager {
   /**
    * Create or retrieve a custom room
    */
-  createRoom({ roomId, name, password, isPrivate = false, hostUser = null, maxUsers = 50, requireApproval = false }) {
+  createRoom({ roomId, name, password, isPrivate = false, hostUser = null, maxUsers = 50, requireApproval = false, allowAudioCalls = true, allowVideoCalls = true, allowMediaUploads = true, allowMemberChat = true }) {
     const cleanId = roomId.trim().replace(/[^a-zA-Z0-9_-]/g, '-').toUpperCase();
     
     if (this.rooms.has(cleanId)) {

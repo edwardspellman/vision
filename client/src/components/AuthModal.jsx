@@ -99,38 +99,7 @@ export default function AuthModal() {
 
         {/* Form Body */}
         {activeTab === 'guest' ? (
-          <form onSubmit={handleGuestSubmit} className="space-y-3.5">
-            <div>
-              <div className="flex items-center justify-between px-1 mb-1.5">
-                <span className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider">
-                  Your Username
-                </span>
-                <button
-                  type="button"
-                  onClick={handleRandomize}
-                  className="text-xs text-[#00ff88] hover:underline font-semibold flex items-center space-x-1 active:scale-95 transition"
-                >
-                  <Sparkles className="w-3 h-3" />
-                  <span>Randomize</span>
-                </button>
-              </div>
-
-              <div className="field">
-                <User className="input-icon text-[#00ff88]" />
-                <input
-                  type="text"
-                  value={handle}
-                  onChange={(e) => setHandle(e.target.value)}
-                  placeholder="Enter your username"
-                  className="input-field text-white font-bold"
-                  required
-                  autoFocus
-                />
-              </div>
-            </div>
-
-          {activeTab === 'guest' ? (
-            <form onSubmit={handleGuestSubmit} className="space-y-4">
+          <form onSubmit={handleGuestSubmit} className="space-y-4">
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-bold text-zinc-300">
@@ -169,7 +138,6 @@ export default function AuthModal() {
                   <span className="text-[#00ff88]">Zero sign-up required</span>
                 </div>
               </div>
-            </div>
 
               <button
                 type="submit"
@@ -197,7 +165,6 @@ export default function AuthModal() {
                   />
                 </div>
               </div>
-            </div>
 
               <div>
                 <label className="block text-xs font-bold text-zinc-300 mb-1.5">
@@ -215,7 +182,6 @@ export default function AuthModal() {
                   />
                 </div>
               </div>
-            </div>
 
               <button
                 type="submit"
@@ -232,6 +198,5 @@ export default function AuthModal() {
           </p>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }

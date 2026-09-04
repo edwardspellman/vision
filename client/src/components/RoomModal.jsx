@@ -95,7 +95,6 @@ export default function RoomModal({ isOpen, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-fade-in font-mono select-none">
       <div className="w-full max-w-md uiverse-room-modal relative max-h-[92dvh] overflow-y-auto scroll-touch p-5 sm:p-7">
-        {/* Close Button Top Right */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-white rounded-full bg-[#222222] hover:bg-black transition active:scale-95"
@@ -103,14 +102,6 @@ export default function RoomModal({ isOpen, onClose }) {
         >
           <X className="w-4 h-4" />
         </button>
-
-          <button
-            onClick={onClose}
-            className="p-1 text-zinc-400 hover:text-white rounded transition min-h-[36px] min-w-[36px] flex items-center justify-center"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
 
         {/* Tab Selection Buttons */}
         <div className="flex justify-center gap-2 mb-4 bg-[#111111] p-1.5 rounded-[16px] border border-[#222222]">
@@ -178,7 +169,6 @@ export default function RoomModal({ isOpen, onClose }) {
                   />
                 </div>
               </div>
-            </div>
 
               {/* Room Name */}
               <div>
@@ -277,12 +267,8 @@ export default function RoomModal({ isOpen, onClose }) {
                       Anyone joining will need to enter this password.
                     </p>
                   </div>
-                  <p className="text-[10px] text-zinc-400 px-1">
-                    Peers must enter this password to join.
-                  </p>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
 
             {/* Host Settings & Controls Box */}
             <div className="p-3.5 bg-[#121212] rounded-[18px] border border-[#222222] space-y-3 shadow-inner">
@@ -297,71 +283,58 @@ export default function RoomModal({ isOpen, onClose }) {
                   You are Host
                 </span>
               </div>
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isCreating}
-                className="w-full button2 flex items-center justify-center space-x-2 disabled:opacity-50"
-              >
-                <span>{isCreating ? 'Creating Room...' : 'Create & Join Room'}</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={handleJoinSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-zinc-300 mb-1.5">
-                  Room ID
-                </label>
-                <div className="field">
-                  <LogIn className="input-icon text-[#00f0ff]" />
-                  <input
-                    type="text"
-                    value={joinId}
-                    onChange={(e) => setJoinId(e.target.value.toUpperCase())}
-                    placeholder="Enter Room ID"
-                    className="input-field text-[#00f0ff] font-bold uppercase"
-                    required
-                  />
-                </div>
-              </div>
             </div>
 
-              <div>
-                <label className="block text-xs font-bold text-zinc-300 mb-1.5">
-                  Password (if required)
-                </label>
-                <div className="field">
-                  <KeyRound className="input-icon text-zinc-400" />
-                  <input
-                    type="password"
-                    value={joinPassword}
-                    onChange={(e) => setJoinPassword(e.target.value)}
-                    placeholder="Leave blank if no password"
-                    className="input-field"
-                  />
-                </div>
-              </div>
-            </div>
-
-              <button
-                type="submit"
-                className="w-full button2 flex items-center justify-center space-x-2 bg-[#00f0ff] hover:bg-[#00d0e0]"
-              >
-                <LogIn className="w-4 h-4" />
-                <span>Join Room</span>
-              </button>
-            </form>
-          )}
-
-          {/* Return to Wi-Fi Room */}
-          <div className="mt-5 pt-3.5 border-t border-[#161f30] text-center">
+            {/* Submit Button */}
             <button
               type="submit"
-              className="button-submit"
+              disabled={isCreating}
+              className="w-full button2 flex items-center justify-center space-x-2 disabled:opacity-50"
             >
-              <LogIn className="w-4 h-4 text-[#00f0ff]" />
+              <span>{isCreating ? 'Creating Room...' : 'Create & Join Room'}</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleJoinSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-zinc-300 mb-1.5">
+                Room ID
+              </label>
+              <div className="field">
+                <LogIn className="input-icon text-[#00f0ff]" />
+                <input
+                  type="text"
+                  value={joinId}
+                  onChange={(e) => setJoinId(e.target.value.toUpperCase())}
+                  placeholder="Enter Room ID"
+                  className="input-field text-[#00f0ff] font-bold uppercase"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-zinc-300 mb-1.5">
+                Password (if required)
+              </label>
+              <div className="field">
+                <KeyRound className="input-icon text-zinc-400" />
+                <input
+                  type="password"
+                  value={joinPassword}
+                  onChange={(e) => setJoinPassword(e.target.value)}
+                  placeholder="Leave blank if no password"
+                  className="input-field"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full button2 flex items-center justify-center space-x-2 bg-[#00f0ff] hover:bg-[#00d0e0]"
+            >
+              <LogIn className="w-4 h-4" />
               <span>Join Room</span>
             </button>
           </form>

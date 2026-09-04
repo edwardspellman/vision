@@ -34,18 +34,6 @@ export default function Header({
   };
 
   return (
-    <header className="h-14 px-3 md:px-5 bg-[#05080f] border-b border-[#161f30] flex items-center justify-between z-30 shrink-0 select-none font-mono">
-      {/* Left: Branding & Current Room Info */}
-      <div className="flex items-center space-x-2.5 md:space-x-4 min-w-0">
-        <button 
-          onClick={onToggleSidebar}
-          className="md:hidden p-2 text-zinc-400 hover:text-[#00ff88] rounded-xl bg-[#0b101c] border border-[#161f30] transition min-h-[40px] min-w-[40px] flex items-center justify-center"
-          aria-label="Toggle user list"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-
-  return (
     <header className="min-h-[3.25rem] sm:min-h-[3.5rem] px-3 sm:px-4 md:px-5 bg-[#05080f] border-b border-[#161f30] flex items-center justify-between z-30 shrink-0 select-none font-mono pt-safe">
       {/* Left: Clean Branding & Current Room Info */}
       <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
