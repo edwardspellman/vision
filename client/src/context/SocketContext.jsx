@@ -15,9 +15,9 @@ export function SocketProvider({ children }) {
   const [typingUsers, setTypingUsers] = useState([]);
   const [error, setError] = useState(null);
   
-  // Auth & Profile Setup State
+  // Auth & Profile Setup State (Instant access by default)
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem('vision_auth') === 'true';
+    return localStorage.getItem('vision_auth') !== 'false';
   });
   const [hasCompletedProfile, setHasCompletedProfile] = useState(() => {
     return localStorage.getItem('vision_profile_setup') === 'true';
@@ -352,6 +352,28 @@ export function SocketProvider({ children }) {
   };
 
   /**
+   * Update Room Settings (Host Only)
+   */
+  const updateRoomSettings = (settings) => {
+    return new Promise((resolve) => {
+      if (!socket || !currentRoom) return resolve({ success: false, error: 'Socket offline or no active room' });
+
+      socket.emit(
+        'update_room_settings',
+        { roomId: currentRoom.id, settings },
+        (response) => {
+          if (response && response.success) {
+            setCurrentRoom((prev) => ({ ...prev, ...response.room }));
+            resolve({ success: true, room: response.room });
+          } else {
+            resolve({ success: false, error: response?.error || 'Failed to update settings' });
+          }
+        }
+      );
+    });
+  };
+
+  /**
    * Send a message
    */
   const sendMessage = ({ text, type = 'text', fileUrl = null, fileName = null, fileSize = null, audioDuration = null }) => {
@@ -426,7 +448,9 @@ export function SocketProvider({ children }) {
         logout,
         completeProfileSetup,
         joinRoom,
+        leaveRoom,
         createRoom,
+        updateRoomSettings,
         sendMessage,
         setTyping,
         toggleReaction,

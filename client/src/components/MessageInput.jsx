@@ -5,8 +5,7 @@ import {
   Smile, 
   Mic, 
   Loader2, 
-  X,
-  CornerDownLeft
+  X
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import VoiceRecorder from './VoiceRecorder';
@@ -17,7 +16,7 @@ const EMOJI_LIST = [
 ];
 
 export default function MessageInput() {
-  const { sendMessage, setTyping } = useSocket();
+  const { sendMessage, setTyping, currentRoom } = useSocket();
   const [text, setText] = useState('');
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -29,6 +28,8 @@ export default function MessageInput() {
   const textareaRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const emojiPickerRef = useRef(null);
+
+  const mediaAllowed = currentRoom?.allowMediaUploads !== false;
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -142,7 +143,7 @@ export default function MessageInput() {
 
   if (isRecordingVoice) {
     return (
-      <div className="p-3 bg-[#05080f] border-t border-[#161f30] shrink-0 font-mono">
+      <div className="p-2.5 sm:p-3 bg-[#05080f] border-t border-[#161f30] shrink-0 font-mono pb-safe">
         <VoiceRecorder
           onSendAudio={(audioData) => {
             sendMessage({
@@ -159,7 +160,7 @@ export default function MessageInput() {
   }
 
   return (
-    <div className="p-3 md:p-4 bg-[#05080f] border-t border-[#161f30] shrink-0 relative font-mono">
+    <div className="p-2 sm:p-3 md:p-4 bg-[#05080f] border-t border-[#161f30] shrink-0 relative font-mono pb-safe">
       {/* File Attachment Preview */}
       {selectedFile && (
         <div className="mb-2 p-2 bg-[#080d17] border border-[#1a263d] rounded-xl flex items-center justify-between animate-fade-in">
@@ -180,24 +181,24 @@ export default function MessageInput() {
           </div>
           <button
             onClick={clearFileSelection}
-            className="p-1 text-zinc-400 hover:text-white rounded transition"
+            className="p-1.5 text-zinc-400 hover:text-white rounded-lg transition active:scale-95"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
-      {/* Emoji Popover */}
+      {/* Emoji Popover (Responsive Mobile Bounds) */}
       {showEmojiPicker && (
         <div
           ref={emojiPickerRef}
-          className="absolute bottom-full left-4 mb-2 p-2.5 bg-[#080d17] border border-[#1a263d] rounded-xl w-64 max-h-56 overflow-y-auto grid grid-cols-5 gap-1.5 z-40 shadow-2xl animate-fade-in"
+          className="absolute bottom-full left-2 sm:left-4 mb-2 p-2.5 bg-[#080d17] border border-[#1a263d] rounded-xl w-[calc(100vw-1rem)] sm:w-64 max-w-xs max-h-56 overflow-y-auto grid grid-cols-5 gap-1.5 z-40 shadow-2xl animate-fade-in scroll-touch"
         >
           {EMOJI_LIST.map((emoji, idx) => (
             <button
               key={idx}
               onClick={() => handleAddEmoji(emoji)}
-              className="p-2 hover:bg-[#111827] rounded-lg text-lg flex items-center justify-center hover:scale-125 transition"
+              className="p-2 hover:bg-[#111827] rounded-lg text-lg flex items-center justify-center hover:scale-125 transition active:scale-90"
             >
               {emoji}
             </button>
@@ -206,7 +207,7 @@ export default function MessageInput() {
       )}
 
       {/* Input Row */}
-      <form onSubmit={handleSend} className="flex items-end space-x-2">
+      <form onSubmit={handleSend} className="flex items-end space-x-1.5 sm:space-x-2">
         <input
           ref={fileInputRef}
           type="file"

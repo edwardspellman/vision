@@ -14,6 +14,8 @@ import {
   User
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
+import { useWebRTC } from '../context/WebRTCContext';
+import { getAvatarSvg } from '../utils/avatar';
 import MessageItem from './MessageItem';
 
 export default function ChatArea({ onOpenRoomModal, onOpenShareModal, onOpenSettingsModal, onImageClick }) {
@@ -22,6 +24,17 @@ export default function ChatArea({ onOpenRoomModal, onOpenShareModal, onOpenSett
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const messagesEndRef = useRef(null);
   const containerRef = useRef(null);
+
+  const isCustomRoom = Boolean(
+    currentRoom?.isCustom || 
+    (currentRoom && ipInfo?.autoRoom?.roomId && currentRoom.id !== ipInfo.autoRoom.roomId)
+  );
+
+  const isHost = Boolean(
+    currentRoom?.hostId && (currentRoom.hostId === user.id || currentRoom.hostId === user.name)
+  );
+
+  const callsAllowed = currentRoom?.allowAudioCalls !== false || currentRoom?.allowVideoCalls !== false;
 
   const scrollToBottom = (behavior = 'smooth') => {
     messagesEndRef.current?.scrollIntoView({ behavior });
@@ -36,6 +49,12 @@ export default function ChatArea({ onOpenRoomModal, onOpenShareModal, onOpenSett
     const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
     const isUp = scrollHeight - scrollTop - clientHeight > 150;
     setShowScrollBottom(isUp);
+  };
+
+  const handleLeave = () => {
+    if (window.confirm('Are you sure you want to leave this room?')) {
+      leaveRoom();
+    }
   };
 
   const handleDragOver = (e) => {
@@ -87,6 +106,41 @@ export default function ChatArea({ onOpenRoomModal, onOpenShareModal, onOpenSett
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
+      {/* Active Live Room Call Banner */}
+      {roomCallState.isLive && (
+        <div className="bg-[#0e0717] border-b border-[#a855f7]/30 px-3.5 py-2 flex items-center justify-between text-xs text-zinc-200 z-20 animate-fade-in shrink-0">
+          <div className="flex items-center space-x-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
+            <span className="font-bold text-white flex items-center space-x-1.5">
+              <span>Live Room Call</span>
+              <span className="px-1.5 py-0.2 bg-[#a855f7]/20 text-[#c084fc] border border-[#a855f7]/40 rounded-full text-[9px]">
+                {roomCallState.participantCount} in call
+              </span>
+            </span>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            {!isJoinedRoomCall ? (
+              <button
+                onClick={() => startOrJoinRoomCall(true)}
+                className="px-3 py-1 bg-[#00ff88] hover:bg-[#00e67a] text-black font-bold rounded-lg text-xs flex items-center space-x-1.5 transition active:scale-95 shadow"
+              >
+                <Video className="w-3.5 h-3.5" />
+                <span>Join Call</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => setIsRoomCallModalOpen(true)}
+                className="px-3 py-1 bg-[#a855f7] hover:bg-[#9333ea] text-white font-bold rounded-lg text-xs flex items-center space-x-1.5 transition active:scale-95 shadow"
+              >
+                <Radio className="w-3.5 h-3.5 animate-pulse" />
+                <span>Open Call View</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* File Drop Overlay */}
       {isDraggingOver && (
         <div className="absolute inset-0 z-30 bg-black/90 border-2 border-dashed border-[#00ff88] m-4 rounded-2xl flex flex-col items-center justify-center text-center p-6 pointer-events-none animate-fade-in">
@@ -100,7 +154,7 @@ export default function ChatArea({ onOpenRoomModal, onOpenShareModal, onOpenSett
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-4 md:px-8 py-5 space-y-1"
+        className="flex-1 overflow-y-auto px-2.5 sm:px-4 md:px-8 py-4 space-y-1 scroll-touch"
       >
         {/* Compact & Clean Welcome Room Banner */}
         <div className="max-w-md mx-auto my-3 p-4 rounded-2xl bg-[#080d17]/90 border border-[#00ff88]/30 shadow-lg text-center font-mono relative overflow-hidden">

@@ -6,7 +6,8 @@ import {
   Smartphone,
   ArrowRight,
   RefreshCw,
-  User
+  User,
+  MessageSquare
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { getAvatarSvg, generateRandomName, getColorForString } from '../utils/avatar';

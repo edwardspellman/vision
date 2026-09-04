@@ -54,14 +54,18 @@ export default function RoomModal({ isOpen, onClose }) {
     setCreateError('');
 
     const res = await createRoom({
-      roomId: createId.trim(),
-      name: createName.trim() || createId.trim(),
+      roomId: createId.trim().toUpperCase(),
+      name: createName.trim() || createId.trim().toUpperCase(),
       password: enablePassword ? createPassword.trim() : '',
       allowAudio,
       allowFiles,
       allowVoice,
       isPrivate: true,
-      maxUsers: 50
+      maxUsers: Number(maxUsers) || 50,
+      allowAudioCalls,
+      allowVideoCalls,
+      allowMediaUploads,
+      allowMemberChat
     });
 
     setIsCreating(false);
@@ -89,16 +93,16 @@ export default function RoomModal({ isOpen, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-fade-in font-mono select-none">
-      <div className="w-full max-w-md bg-[#080d17] rounded-2xl border border-[#1a263d] shadow-2xl overflow-hidden">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-[#161f30] flex items-center justify-between bg-[#0a1120]">
-          <div className="flex items-center space-x-2">
-            <PlusCircle className="w-4 h-4 text-[#00ff88]" />
-            <h3 className="font-bold text-sm text-zinc-100">
-              Rooms
-            </h3>
-          </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-fade-in font-mono select-none">
+      <div className="w-full max-w-md uiverse-room-modal relative max-h-[92dvh] overflow-y-auto scroll-touch p-5 sm:p-7">
+        {/* Close Button Top Right */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-white rounded-full bg-[#222222] hover:bg-black transition active:scale-95"
+          aria-label="Close"
+        >
+          <X className="w-4 h-4" />
+        </button>
 
           <button
             onClick={onClose}
@@ -108,40 +112,43 @@ export default function RoomModal({ isOpen, onClose }) {
           </button>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="p-3 pb-0 flex space-x-2 border-b border-[#161f30] bg-[#0a1120]">
+        {/* Tab Selection Buttons */}
+        <div className="flex justify-center gap-2 mb-4 bg-[#111111] p-1.5 rounded-[16px] border border-[#222222]">
           <button
+            type="button"
             onClick={() => setActiveTab('create')}
-            className={`flex-1 pb-3 text-xs font-bold border-b-2 transition flex items-center justify-center space-x-1.5 ${
+            className={`flex-1 py-2 text-xs font-bold rounded-[12px] transition flex items-center justify-center space-x-1.5 ${
               activeTab === 'create'
-                ? 'border-[#00ff88] text-[#00ff88]'
-                : 'border-transparent text-zinc-400 hover:text-zinc-200'
+                ? 'bg-[#252525] text-[#00ff88] shadow-md border border-[#00ff88]/30'
+                : 'text-zinc-400 hover:text-white'
             }`}
           >
+            <PlusCircle className="w-3.5 h-3.5" />
             <span>Create Room</span>
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('join')}
-            className={`flex-1 pb-3 text-xs font-bold border-b-2 transition flex items-center justify-center space-x-1.5 ${
+            className={`flex-1 py-2 text-xs font-bold rounded-[12px] transition flex items-center justify-center space-x-1.5 ${
               activeTab === 'join'
-                ? 'border-[#00f0ff] text-[#00f0ff]'
-                : 'border-transparent text-zinc-400 hover:text-zinc-200'
+                ? 'bg-[#252525] text-[#00f0ff] shadow-md border border-[#00f0ff]/30'
+                : 'text-zinc-400 hover:text-white'
             }`}
           >
+            <LogIn className="w-3.5 h-3.5" />
             <span>Join with ID</span>
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6">
-          {activeTab === 'create' ? (
-            <form onSubmit={handleCreateSubmit} className="space-y-4">
-              {createError && (
-                <div className="p-2.5 bg-[#ff3366]/10 border border-[#ff3366]/30 rounded-lg text-xs text-[#ff3366]">
-                  {createError}
-                </div>
-              )}
+        {/* Forms Content */}
+        {activeTab === 'create' ? (
+          <form onSubmit={handleCreateSubmit} className="space-y-3.5">
+            {createError && (
+              <div className="p-2.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-400 text-center">
+                {createError}
+              </div>
+            )}
 
               {/* Room ID */}
               <div>
@@ -171,6 +178,7 @@ export default function RoomModal({ isOpen, onClose }) {
                   />
                 </div>
               </div>
+            </div>
 
               {/* Room Name */}
               <div>
@@ -269,7 +277,25 @@ export default function RoomModal({ isOpen, onClose }) {
                       Anyone joining will need to enter this password.
                     </p>
                   </div>
-                )}
+                  <p className="text-[10px] text-zinc-400 px-1">
+                    Peers must enter this password to join.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Host Settings & Controls Box */}
+            <div className="p-3.5 bg-[#121212] rounded-[18px] border border-[#222222] space-y-3 shadow-inner">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Crown className="w-4 h-4 text-[#00ff88]" />
+                  <span className="text-xs font-bold text-zinc-200 uppercase tracking-wider">
+                    Host Settings & Controls
+                  </span>
+                </div>
+                <span className="text-[10px] text-[#00ff88] font-bold px-2 py-0.5 bg-[#00ff88]/10 border border-[#00ff88]/20 rounded-full">
+                  You are Host
+                </span>
               </div>
 
               {/* Submit Button */}
@@ -300,6 +326,7 @@ export default function RoomModal({ isOpen, onClose }) {
                   />
                 </div>
               </div>
+            </div>
 
               <div>
                 <label className="block text-xs font-bold text-zinc-300 mb-1.5">
@@ -316,6 +343,7 @@ export default function RoomModal({ isOpen, onClose }) {
                   />
                 </div>
               </div>
+            </div>
 
               <button
                 type="submit"
@@ -330,13 +358,24 @@ export default function RoomModal({ isOpen, onClose }) {
           {/* Return to Wi-Fi Room */}
           <div className="mt-5 pt-3.5 border-t border-[#161f30] text-center">
             <button
-              onClick={handleJoinLocalNetwork}
-              className="text-xs text-zinc-400 hover:text-[#00ff88] flex items-center justify-center space-x-1.5 mx-auto transition font-medium"
+              type="submit"
+              className="button-submit"
             >
-              <Wifi className="w-3.5 h-3.5" />
-              <span>Back to Local Wi-Fi Network</span>
+              <LogIn className="w-4 h-4 text-[#00f0ff]" />
+              <span>Join Room</span>
             </button>
-          </div>
+          </form>
+        )}
+
+        {/* Back to Local Network Option */}
+        <div className="mt-4 pt-3.5 border-t border-[#222222] text-center">
+          <button
+            onClick={handleJoinLocalNetwork}
+            className="text-xs text-zinc-400 hover:text-[#00ff88] inline-flex items-center space-x-1.5 transition font-semibold"
+          >
+            <Wifi className="w-3.5 h-3.5" />
+            <span>Return to Local Wi-Fi Network</span>
+          </button>
         </div>
       </div>
     </div>

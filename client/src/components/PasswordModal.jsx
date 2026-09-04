@@ -30,16 +30,16 @@ export default function PasswordModal() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-fade-in font-mono select-none">
-      <div className="w-full max-w-sm bg-[#080d17] rounded-2xl border border-[#ffb700]/50 shadow-2xl p-6">
+      <div className="w-full max-w-sm bg-[#080d17] rounded-2xl border border-[#00f0ff]/40 shadow-2xl p-6">
         <div className="text-center mb-5">
-          <div className="w-12 h-12 rounded-xl bg-[#ffb700]/10 border border-[#ffb700]/30 text-[#ffb700] mx-auto flex items-center justify-center mb-3">
+          <div className="w-12 h-12 rounded-xl bg-[#00f0ff]/10 border border-[#00f0ff]/30 text-[#00f0ff] mx-auto flex items-center justify-center mb-3">
             <Lock className="w-6 h-6" />
           </div>
           <h3 className="text-sm font-bold text-zinc-100 mb-1">
             Password Required
           </h3>
           <p className="text-xs text-zinc-400">
-            Room <span className="text-[#ffb700] font-bold">{pendingRoomId}</span> is password-protected.
+            Room <span className="text-[#00f0ff] font-bold">{pendingRoomId}</span> is password-protected.
           </p>
         </div>
 

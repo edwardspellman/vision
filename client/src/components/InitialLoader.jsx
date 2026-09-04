@@ -12,27 +12,39 @@ export default function InitialLoader({ isReady, onFinish }) {
   const [fadingOut, setFadingOut] = useState(false);
 
   useEffect(() => {
+    // Step through logs quickly
     const interval = setInterval(() => {
       setLogIndex((prev) => (prev < BOOT_LOGS.length - 1 ? prev + 1 : prev));
-    }, 350);
+    }, 200);
 
-    return () => clearInterval(interval);
-  }, []);
+    // Hard fallback timeout: loader NEVER stays longer than 800ms
+    const safetyTimer = setTimeout(() => {
+      setFadingOut(true);
+      setTimeout(() => {
+        if (onFinish) onFinish();
+      }, 400);
+    }, 800);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(safetyTimer);
+    };
+  }, [onFinish]);
 
   useEffect(() => {
-    if (isReady && logIndex >= BOOT_LOGS.length - 2) {
+    if (isReady && !fadingOut) {
       const timer = setTimeout(() => {
         setFadingOut(true);
         setTimeout(() => {
-          onFinish();
-        }, 500);
-      }, 600);
+          if (onFinish) onFinish();
+        }, 300);
+      }, 300);
       return () => clearTimeout(timer);
     }
-  }, [isReady, logIndex, onFinish]);
+  }, [isReady, fadingOut, onFinish]);
 
   return (
-    <div className={`fixed inset-0 z-50 bg-[#04060a] flex flex-col items-center justify-center font-mono select-none transition-opacity duration-500 ${fadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+    <div className={`fixed inset-0 z-50 bg-[#04060a] flex flex-col items-center justify-center font-mono select-none transition-opacity duration-400 ${fadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
       {/* Background Glow */}
       <div className="absolute inset-0 pointer-events-none opacity-20 bg-[radial-gradient(circle_at_center,rgba(0,255,136,0.1)_0%,transparent_70%)]" />
 

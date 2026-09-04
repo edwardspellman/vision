@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const os = require('os');
 
 /**
  * Normalizes and extracts client IP address from Express Request or Socket handshake
@@ -24,7 +25,7 @@ function getClientIp(reqOrSocket) {
   }
 
   if (!ip) {
-    return '127.0.0.1';
+    return getServerPrimaryLanIp();
   }
 
   // Clean IPv4-mapped IPv6 addresses (e.g. ::ffff:192.168.1.5 -> 192.168.1.5)
@@ -32,9 +33,9 @@ function getClientIp(reqOrSocket) {
     ip = ip.replace('::ffff:', '');
   }
 
-  // Handle localhost IPv6
-  if (ip === '::1' || ip === '0:0:0:0:0:0:0:1') {
-    return '127.0.0.1';
+  // Handle localhost IPv6 or loopback IPv4
+  if (ip === '::1' || ip === '0:0:0:0:0:0:0:1' || ip === '127.0.0.1' || ip === 'localhost') {
+    return getServerPrimaryLanIp();
   }
 
   return ip;
@@ -59,6 +60,26 @@ function isPrivateIp(ip) {
 }
 
 /**
+ * Finds the server's primary local LAN IPv4 address (e.g. 192.168.1.15)
+ */
+function getServerPrimaryLanIp() {
+  try {
+    const interfaces = os.networkInterfaces();
+    for (const name of Object.keys(interfaces)) {
+      for (const iface of interfaces[name]) {
+        // Skip internal (127.0.0.1) and non-IPv4 addresses
+        if (iface.family === 'IPv4' && !iface.internal) {
+          if (isPrivateIp(iface.address)) {
+            return iface.address;
+          }
+        }
+      }
+    }
+  } catch (e) {}
+  return '192.168.1.1';
+}
+
+/**
  * Generates an automatic room ID based on the IP address.
  * People on the same public IP or local subnet are grouped together.
  */
@@ -78,10 +99,10 @@ function getAutoRoomForIp(rawIp) {
       };
     }
     return {
-      roomId: 'LAN-Localhost',
-      roomName: 'Local Development Network',
+      roomId: 'LAN-WiFi-Network',
+      roomName: 'Local Wi-Fi Network',
       isLocal: true,
-      networkType: 'Localhost'
+      networkType: 'Local Network'
     };
   }
 
@@ -118,6 +139,7 @@ function maskIp(ip) {
 module.exports = {
   getClientIp,
   isPrivateIp,
+  getServerPrimaryLanIp,
   getAutoRoomForIp,
   maskIp
 };

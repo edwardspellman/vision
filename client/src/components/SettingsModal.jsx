@@ -66,7 +66,7 @@ export default function SettingsModal({ isOpen, onClose, soundMuted, setSoundMut
           </button>
         </div>
 
-        <form onSubmit={handleSave} className="space-y-4">
+        <form onSubmit={handleSave} className="space-y-3.5">
           {/* Avatar Preview */}
           <div className="flex flex-col items-center justify-center pt-2">
             <div className="relative mb-2 group">

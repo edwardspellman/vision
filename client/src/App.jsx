@@ -9,7 +9,8 @@ import RoomModal from './components/RoomModal';
 import ShareModal from './components/ShareModal';
 import PasswordModal from './components/PasswordModal';
 import SettingsModal from './components/SettingsModal';
-import VideoCallModal from './components/VideoCallModal';
+import RoomSettingsModal from './components/RoomSettingsModal';
+import BetaNoticeModal from './components/BetaNoticeModal';
 import ImageLightbox from './components/ImageLightbox';
 import InitialLoader from './components/InitialLoader';
 import AuthModal from './components/AuthModal';
@@ -20,9 +21,11 @@ function MainApp() {
   const { connected, currentRoom, isAuthenticated, showProfileSetup } = useSocket();
   const [showSplash, setShowSplash] = useState(true);
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
+  const [isRoomSettingsModalOpen, setIsRoomSettingsModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isBetaModalOpen, setIsBetaModalOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
   const [soundMuted, setSoundMuted] = useState(() => {
     return localStorage.getItem('vision_sound_muted') === 'true';
@@ -54,9 +57,11 @@ function MainApp() {
       {/* Top Header Navigation */}
       <Header
         onOpenRoomModal={() => setIsRoomModalOpen(true)}
+        onOpenRoomSettingsModal={() => setIsRoomSettingsModalOpen(true)}
         onOpenShareModal={() => setIsShareModalOpen(true)}
         onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        onOpenBetaModal={() => setIsBetaModalOpen(true)}
         soundMuted={soundMuted}
         setSoundMuted={setSoundMuted}
       />
@@ -77,6 +82,12 @@ function MainApp() {
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
           onOpenShareModal={() => setIsShareModalOpen(true)}
+          onOpenRoomModal={() => setIsRoomModalOpen(true)}
+          onOpenRoomSettingsModal={() => setIsRoomSettingsModalOpen(true)}
+          onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
+          onOpenBetaModal={() => setIsBetaModalOpen(true)}
+          soundMuted={soundMuted}
+          setSoundMuted={setSoundMuted}
         />
       </div>
 
@@ -84,6 +95,11 @@ function MainApp() {
       <RoomModal
         isOpen={isRoomModalOpen}
         onClose={() => setIsRoomModalOpen(false)}
+      />
+
+      <RoomSettingsModal
+        isOpen={isRoomSettingsModalOpen}
+        onClose={() => setIsRoomSettingsModalOpen(false)}
       />
 
       <ShareModal
@@ -100,7 +116,11 @@ function MainApp() {
         setSoundMuted={setSoundMuted}
       />
 
-      <VideoCallModal />
+      {/* Beta Notice Modal for Voice & Video Calling */}
+      <BetaNoticeModal
+        isOpen={isBetaModalOpen}
+        onClose={() => setIsBetaModalOpen(false)}
+      />
 
       <ImageLightbox
         imageUrl={previewImage}

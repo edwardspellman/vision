@@ -12,13 +12,41 @@
   }
 
   body {
-    @apply bg-[#04060a] text-zinc-300 min-h-screen font-mono;
+    @apply bg-[#04060a] text-zinc-300 font-mono;
     background-image: 
       radial-gradient(circle at 50% 0%, rgba(0, 255, 136, 0.03) 0%, transparent 60%),
       linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
       linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
     background-size: 100% 100%, 32px 32px, 32px 32px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+
+  /* Prevent automatic zoom on input focus in iOS Safari */
+  @media screen and (max-width: 768px) {
+    input, textarea, select {
+      font-size: 16px !important;
+    }
+  }
+}
+
+/* Safe area padding utilities */
+.pt-safe {
+  padding-top: max(0.5rem, env(safe-area-inset-top));
+}
+.pb-safe {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+.pl-safe {
+  padding-left: max(0.5rem, env(safe-area-inset-left));
+}
+.pr-safe {
+  padding-right: max(0.5rem, env(safe-area-inset-right));
+}
+
+/* Smooth momentum scrolling for iOS */
+.scroll-touch {
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Mobile Safe Areas for iOS devices */

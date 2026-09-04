@@ -17,9 +17,11 @@ import { sound } from '../utils/sound';
 
 export default function Header({ 
   onOpenRoomModal, 
+  onOpenRoomSettingsModal,
   onOpenShareModal, 
   onOpenSettingsModal,
   onToggleSidebar,
+  onOpenBetaModal,
   soundMuted,
   setSoundMuted
 }) {
@@ -43,20 +45,24 @@ export default function Header({
           <Menu className="w-5 h-5" />
         </button>
 
-        {/* Logo */}
+  return (
+    <header className="min-h-[3.25rem] sm:min-h-[3.5rem] px-3 sm:px-4 md:px-5 bg-[#05080f] border-b border-[#161f30] flex items-center justify-between z-30 shrink-0 select-none font-mono pt-safe">
+      {/* Left: Clean Branding & Current Room Info */}
+      <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
+        {/* Clean Logo */}
         <div className="flex items-center shrink-0">
-          <span className="font-black text-base tracking-wider text-white">
+          <span className="font-black text-sm sm:text-base tracking-wider text-white">
             Vision<span className="text-[#00ff88]">.</span>
           </span>
         </div>
 
-        <span className="text-[#1c283f] text-xs hidden sm:inline">|</span>
+        <span className="text-[#1c283f] text-xs">|</span>
 
         {/* Current Room Pill */}
         <div className="flex items-center space-x-2 truncate">
           <div className="flex items-center space-x-2 bg-[#080d17] border border-[#1a263d] rounded-lg px-2.5 py-1 text-xs text-zinc-200">
             {currentRoom?.hasPassword ? (
-              <Lock className="w-3.5 h-3.5 text-[#ffb700] shrink-0" />
+              <Lock className="w-3.5 h-3.5 text-[#00f0ff] shrink-0" />
             ) : (
               <Wifi className="w-3.5 h-3.5 text-[#00ff88] shrink-0" />
             )}
@@ -67,8 +73,8 @@ export default function Header({
             </span>
 
             {currentRoom?.hasPassword && (
-              <span className="px-1.5 py-0.2 bg-[#ffb700]/10 text-[#ffb700] border border-[#ffb700]/30 text-[10px] font-bold rounded">
-                Protected
+              <span className="px-1.5 py-0.2 bg-[#00f0ff]/10 text-[#00f0ff] border border-[#00f0ff]/30 text-[9px] font-bold rounded shrink-0">
+                Key
               </span>
             )}
           </div>
@@ -92,7 +98,7 @@ export default function Header({
         </div>
       </div>
 
-      {/* Right Controls */}
+      {/* Right Controls: Ultra Clean on Mobile, Expanded on Desktop */}
       <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
         {/* Knock Requests Notification Pill for Host */}
         {hostApprovalRequests && hostApprovalRequests.length > 0 && (
@@ -115,7 +121,20 @@ export default function Header({
           <span className="hidden sm:inline">Rooms</span>
         </button>
 
-        {/* Share Room Button */}
+        {/* Desktop-only: Room Call Button (Beta Modal) */}
+        <button
+          onClick={onOpenBetaModal}
+          className="hidden md:flex items-center space-x-1.5 px-2.5 py-1.5 text-xs font-bold rounded-lg bg-[#0b101c] hover:bg-[#111827] text-zinc-200 hover:text-[#00f0ff] border border-[#1a263d] hover:border-[#00f0ff]/40 transition active:scale-95"
+          title="Voice & Video Calling (Beta)"
+        >
+          <Video className="w-3.5 h-3.5 text-[#00f0ff]" />
+          <span>Call</span>
+          <span className="px-1 py-0.2 bg-[#00f0ff]/10 text-[#00f0ff] text-[8px] font-bold rounded border border-[#00f0ff]/30">
+            BETA
+          </span>
+        </button>
+
+        {/* Desktop-only: Share Room Button */}
         <button
           onClick={onOpenShareModal}
           className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-[#0b101c] hover:bg-[#111827] text-zinc-200 hover:text-[#00f0ff] border border-[#1a263d] hover:border-[#00f0ff]/40 transition min-h-[38px]"
@@ -125,31 +144,52 @@ export default function Header({
           <span className="hidden sm:inline">Share</span>
         </button>
 
-        {/* Audio Mute Toggle */}
+        {/* Desktop-only: Room Settings Button */}
+        {isCustomRoom && (
+          <button
+            onClick={onOpenRoomSettingsModal}
+            className={`hidden lg:flex items-center space-x-1.5 px-2.5 py-1.5 text-xs font-bold rounded-lg border transition active:scale-95 ${
+              isHost
+                ? 'bg-[#00ff88]/10 hover:bg-[#00ff88]/20 text-[#00ff88] border-[#00ff88]/30 hover:border-[#00ff88]/60'
+                : 'bg-[#0b101c] hover:bg-[#111827] text-zinc-200 hover:text-[#00ff88] border-[#1a263d] hover:border-[#00ff88]/40'
+            }`}
+            title={isHost ? 'Host Controls & Settings' : 'Room Settings & Info'}
+          >
+            {isHost ? <Crown className="w-3.5 h-3.5 text-[#00ff88]" /> : <Sliders className="w-3.5 h-3.5 text-[#00ff88]" />}
+            <span>{isHost ? 'Host Settings' : 'Settings'}</span>
+          </button>
+        )}
+
+        {/* Audio Mute Toggle (Desktop only) */}
         <button
           onClick={handleToggleMute}
           className={`p-2 rounded-lg border transition min-h-[38px] min-w-[38px] flex items-center justify-center ${
             soundMuted 
-              ? 'bg-[#0b101c] border-[#1a263d] text-zinc-500' 
-              : 'bg-[#0b101c] border-[#1a263d] text-[#00ff88] hover:border-[#00ff88]/40'
+              ? 'bg-[#1a0c14] text-rose-400 border-rose-500/30' 
+              : 'bg-[#0b101c] hover:bg-[#111827] text-zinc-300 hover:text-[#00ff88] border-[#1a263d]'
           }`}
-          title={soundMuted ? 'Unmute sounds' : 'Mute sounds'}
+          title={soundMuted ? 'Unmute terminal sounds' : 'Mute terminal sounds'}
         >
           {soundMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
         </button>
 
-        {/* User Profile Pill */}
+        {/* Settings Button */}
         <button
           onClick={onOpenSettingsModal}
           className="flex items-center space-x-2 pl-2.5 pr-1.5 py-1 rounded-lg bg-[#080d17] hover:bg-[#0f1626] border border-[#1a263d] hover:border-[#00ff88]/40 transition group min-h-[38px]"
           title="Profile & Settings"
         >
-          <span className="text-xs font-semibold text-zinc-200 group-hover:text-[#00ff88] max-w-[90px] truncate hidden md:inline">
-            {user.name}
-          </span>
-          <div className="w-6 h-6 rounded-md overflow-hidden border border-[#1a263d] group-hover:border-[#00ff88]/50 transition">
-            <img src={getAvatarSvg(user.avatar || user.name)} alt={user.name} className="w-full h-full object-cover" />
-          </div>
+          <Sliders className="w-3.5 h-3.5" />
+        </button>
+
+        {/* Mobile Members Drawer Button (Clean & Classy with Live Count Badge) */}
+        <button
+          onClick={onToggleSidebar}
+          className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg bg-[#0b101c] hover:bg-[#111827] text-zinc-200 border border-[#1a263d] hover:border-[#00ff88]/40 md:hidden transition active:scale-95"
+          aria-label="Open members list"
+        >
+          <Users className="w-3.5 h-3.5 text-[#00ff88]" />
+          <span className="text-xs font-bold text-white">{roomUsers.length}</span>
         </button>
       </div>
     </header>
