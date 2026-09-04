@@ -216,11 +216,11 @@ export default function MessageInput() {
         />
 
         {/* Action Controls (Left) */}
-        <div className="flex items-center space-x-1 pb-1">
+        <div className="flex items-center space-x-1 pb-0.5">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="p-2 text-zinc-400 hover:text-[#00f0ff] rounded-xl bg-[#080d17] border border-[#161f30] hover:border-[#00f0ff]/40 transition"
+            className="p-2.5 text-zinc-400 hover:text-[#00f0ff] rounded-xl bg-[#080d17] border border-[#161f30] hover:border-[#00f0ff]/40 transition min-h-[44px] min-w-[44px] flex items-center justify-center"
             title="Attach file or image"
           >
             <Paperclip className="w-4 h-4" />
@@ -229,7 +229,7 @@ export default function MessageInput() {
           <button
             type="button"
             onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-            className="p-2 text-zinc-400 hover:text-[#ffb700] rounded-xl bg-[#080d17] border border-[#161f30] hover:border-[#ffb700]/40 transition"
+            className="p-2.5 text-zinc-400 hover:text-[#ffb700] rounded-xl bg-[#080d17] border border-[#161f30] hover:border-[#ffb700]/40 transition min-h-[44px] min-w-[44px] flex items-center justify-center"
             title="Add emoji"
           >
             <Smile className="w-4 h-4" />
@@ -237,25 +237,25 @@ export default function MessageInput() {
         </div>
 
         {/* Text Input Box */}
-        <div className="flex-1 bg-[#080d17] border border-[#1a263d] focus-within:border-[#00ff88] rounded-xl px-3.5 py-2.5 transition">
+        <div className="flex-1 bg-[#080d17] border border-[#1a263d] focus-within:border-[#00ff88] rounded-xl px-3.5 py-2.5 transition min-h-[44px] flex items-center">
           <textarea
             ref={textareaRef}
             value={text}
             onChange={handleTextChange}
             onKeyDown={handleKeyDown}
             rows={1}
-            placeholder="Type a message or paste a code snippet..."
-            className="w-full bg-transparent text-zinc-100 placeholder-zinc-500 text-xs focus:outline-none resize-none max-h-24 overflow-y-auto font-mono"
+            placeholder="Type a message..."
+            className="w-full bg-transparent text-zinc-100 placeholder-zinc-500 text-sm focus:outline-none resize-none max-h-24 overflow-y-auto font-mono"
           />
         </div>
 
         {/* Action Controls (Right) */}
-        <div className="flex items-center space-x-1 pb-1">
+        <div className="flex items-center space-x-1 pb-0.5">
           {!text.trim() && !selectedFile ? (
             <button
               type="button"
               onClick={() => setIsRecordingVoice(true)}
-              className="p-2 text-zinc-400 hover:text-[#ff3366] rounded-xl bg-[#080d17] border border-[#161f30] hover:border-[#ff3366]/40 transition"
+              className="p-2.5 text-zinc-400 hover:text-[#ff3366] rounded-xl bg-[#080d17] border border-[#161f30] hover:border-[#ff3366]/40 transition min-h-[44px] min-w-[44px] flex items-center justify-center"
               title="Record voice note"
             >
               <Mic className="w-4 h-4" />
@@ -264,7 +264,7 @@ export default function MessageInput() {
             <button
               type="submit"
               disabled={isUploading}
-              className="p-2 bg-[#00ff88] hover:bg-[#00e67a] text-black font-bold rounded-xl transition shadow-md flex items-center justify-center disabled:opacity-50"
+              className="p-2.5 bg-[#00ff88] hover:bg-[#00e67a] active:scale-[0.98] text-black font-bold rounded-xl transition shadow-md flex items-center justify-center disabled:opacity-50 min-h-[44px] min-w-[44px]"
               title="Send"
             >
               {isUploading ? (

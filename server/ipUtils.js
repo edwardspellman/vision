@@ -44,6 +44,7 @@ function getClientIp(reqOrSocket) {
  * Determine if IP is local/private network
  */
 function isPrivateIp(ip) {
+  if (!ip) return true;
   if (ip === '127.0.0.1' || ip === 'localhost') return true;
   // 10.0.0.0 - 10.255.255.255
   if (/^10\./.test(ip)) return true;
@@ -61,7 +62,8 @@ function isPrivateIp(ip) {
  * Generates an automatic room ID based on the IP address.
  * People on the same public IP or local subnet are grouped together.
  */
-function getAutoRoomForIp(ip) {
+function getAutoRoomForIp(rawIp) {
+  const ip = rawIp || '127.0.0.1';
   const isLocal = isPrivateIp(ip);
 
   if (isLocal) {

@@ -50,7 +50,7 @@ class RoomManager {
   /**
    * Create or retrieve a custom room
    */
-  createRoom({ roomId, name, password, isPrivate = false, hostUser = null, maxUsers = 50 }) {
+  createRoom({ roomId, name, password, isPrivate = false, hostUser = null, maxUsers = 50, requireApproval = false }) {
     const cleanId = roomId.trim().replace(/[^a-zA-Z0-9_-]/g, '-').toUpperCase();
     
     if (this.rooms.has(cleanId)) {
@@ -68,13 +68,15 @@ class RoomManager {
       passwordHash,
       isCustom: true,
       isPrivate,
+      requireApproval: Boolean(requireApproval),
       maxUsers,
       createdAt: Date.now(),
       hostId: hostUser ? hostUser.id : null,
       hostName: hostUser ? hostUser.name : null,
       users: new Map(),
       messages: [],
-      typingUsers: new Set()
+      typingUsers: new Set(),
+      pendingApprovals: new Map()
     };
 
     this.rooms.set(cleanId, room);
@@ -94,12 +96,14 @@ class RoomManager {
         hasPassword: false,
         passwordHash: null,
         isCustom: false,
+        requireApproval: false,
         isLocal,
         networkType,
         createdAt: Date.now(),
         users: new Map(),
         messages: [],
-        typingUsers: new Set()
+        typingUsers: new Set(),
+        pendingApprovals: new Map()
       });
     }
 
@@ -117,11 +121,77 @@ class RoomManager {
       id: room.id,
       name: room.name,
       hasPassword: room.hasPassword,
+      requireApproval: Boolean(room.requireApproval),
       isCustom: room.isCustom || false,
       userCount: room.users.size,
       createdAt: room.createdAt,
-      hostName: room.hostName
+      hostName: room.hostName,
+      hostId: room.hostId
     };
+  }
+
+  /**
+   * Add a pending approval candidate (knocking)
+   */
+  addPendingApproval(socketId, roomId, candidateUser) {
+    const room = this.rooms.get(roomId);
+    if (!room) return false;
+    if (!room.pendingApprovals) room.pendingApprovals = new Map();
+    
+    room.pendingApprovals.set(socketId, {
+      socketId,
+      user: candidateUser,
+      requestedAt: Date.now()
+    });
+    return true;
+  }
+
+  /**
+   * Remove a pending candidate
+   */
+  removePendingApproval(socketId, roomId) {
+    const room = this.rooms.get(roomId);
+    if (room && room.pendingApprovals) {
+      room.pendingApprovals.delete(socketId);
+    }
+  }
+
+  /**
+   * Get host's socket ID in a room
+   */
+  getHostSocketId(roomId) {
+    const room = this.rooms.get(roomId);
+    if (!room) return null;
+    for (const [sId, u] of room.users.entries()) {
+      if (u.isHost || u.id === room.hostId) {
+        return sId;
+      }
+    }
+    // Default to first user if no explicitly marked host
+    const firstSocket = room.users.keys().next().value;
+    return firstSocket || null;
+  }
+
+  /**
+   * Update Room Settings (for Host)
+   */
+  updateRoomSettings(roomId, hostSocketId, newSettings) {
+    const room = this.rooms.get(roomId);
+    if (!room) return { success: false, error: 'Room not found' };
+
+    const hostSocket = this.getHostSocketId(roomId);
+    if (hostSocket && hostSocket !== hostSocketId) {
+      return { success: false, error: 'Only the room host can update room settings' };
+    }
+
+    if (newSettings.requireApproval !== undefined) {
+      room.requireApproval = Boolean(newSettings.requireApproval);
+    }
+    if (newSettings.name) {
+      room.name = newSettings.name.trim();
+    }
+
+    return { success: true, room: this.getRoomPublicInfo(roomId) };
   }
 
   /**

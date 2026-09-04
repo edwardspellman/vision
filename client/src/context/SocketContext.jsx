@@ -29,6 +29,11 @@ export function SocketProvider({ children }) {
   const [pendingRoomId, setPendingRoomId] = useState(null);
   const [passwordError, setPasswordError] = useState(null);
 
+  // Host Approval State
+  const [isWaitingForApproval, setIsWaitingForApproval] = useState(false);
+  const [approvalRoomName, setApprovalRoomName] = useState('');
+  const [hostApprovalRequests, setHostApprovalRequests] = useState([]);
+
   // Operative Profile
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('vision_user');
@@ -94,19 +99,20 @@ export function SocketProvider({ children }) {
 
     // New Message Received
     socketInstance.on('new_message', (message) => {
-      setMessages((prev) => [...prev, message]);
+      const cutoff = Date.now() - 30 * 60 * 1000; // 30 minutes cutoff
+      setMessages((prev) => [...prev.filter((m) => m.timestamp >= cutoff), message]);
       if (message.type !== 'system') {
         sound.playMessageReceive();
       }
     });
 
-    // User Joined
+    // User Joined Notification
     socketInstance.on('user_joined', ({ user: joinedUser, users }) => {
       setRoomUsers(users);
       sound.playUserJoin();
     });
 
-    // User Left
+    // User Left Notification
     socketInstance.on('user_left', ({ user: leftUser, users }) => {
       setRoomUsers(users);
       sound.playUserLeave();
@@ -122,6 +128,29 @@ export function SocketProvider({ children }) {
       setMessages((prev) =>
         prev.map((msg) => (msg.id === messageId ? { ...msg, reactions } : msg))
       );
+    });
+
+    // Host Approval Requests (When candidate knocks)
+    socketInstance.on('host_approval_request', (req) => {
+      setHostApprovalRequests((prev) => [...prev.filter((r) => r.candidateSocketId !== req.candidateSocketId), req]);
+      sound.playUserJoin();
+    });
+
+    // Candidate Approval Granted
+    socketInstance.on('approval_granted', ({ roomId }) => {
+      setIsWaitingForApproval(false);
+      joinRoom(roomId, '', socketInstance);
+    });
+
+    // Candidate Approval Denied
+    socketInstance.on('approval_denied', ({ message }) => {
+      setIsWaitingForApproval(false);
+      setError(message || 'Host denied entry to room.');
+    });
+
+    // Room Settings Updated
+    socketInstance.on('room_settings_updated', (updatedRoom) => {
+      setCurrentRoom((prev) => (prev && prev.id === updatedRoom.id ? { ...prev, ...updatedRoom } : prev));
     });
 
     setSocket(socketInstance);
@@ -155,12 +184,10 @@ export function SocketProvider({ children }) {
     setIsAuthenticated(true);
     localStorage.setItem('vision_auth', 'true');
 
-    // If first time profile setup hasn't been completed, show profile setup
     if (!hasCompletedProfile) {
       setShowProfileSetup(true);
     }
 
-    // Rejoin current room with updated handle
     if (currentRoom) {
       joinRoom(currentRoom.id, '', socket);
     }
@@ -204,7 +231,6 @@ export function SocketProvider({ children }) {
     localStorage.setItem('vision_profile_setup', 'true');
     localStorage.setItem('vision_user', JSON.stringify(updated));
 
-    // Rejoin room to broadcast updated presence
     if (currentRoom && socket) {
       joinRoom(currentRoom.id, '', socket);
     }
@@ -219,6 +245,7 @@ export function SocketProvider({ children }) {
 
     setError(null);
     setPasswordError(null);
+    setIsWaitingForApproval(false);
 
     s.emit('join_room', { roomId, password, user }, (response) => {
       if (!response) return;
@@ -229,6 +256,7 @@ export function SocketProvider({ children }) {
         setMessages(response.messages || []);
         setPasswordModalOpen(false);
         setPendingRoomId(null);
+        setIsWaitingForApproval(false);
 
         if (response.room.isCustom) {
           window.location.hash = `room=${encodeURIComponent(response.room.id)}`;
@@ -236,7 +264,10 @@ export function SocketProvider({ children }) {
           window.location.hash = '';
         }
       } else {
-        if (response.requiresPassword) {
+        if (response.pendingApproval) {
+          setIsWaitingForApproval(true);
+          setApprovalRoomName(roomId);
+        } else if (response.requiresPassword) {
           setPendingRoomId(roomId);
           setPasswordModalOpen(true);
           setPasswordError(password ? 'Access Denied: Invalid Key.' : null);
@@ -248,15 +279,63 @@ export function SocketProvider({ children }) {
   };
 
   /**
+   * Leave current room
+   */
+  const leaveRoom = () => {
+    if (!socket || !currentRoom) return;
+
+    socket.emit('leave_room', { roomId: currentRoom.id }, (res) => {
+      setCurrentRoom(null);
+      setMessages([]);
+      setRoomUsers([]);
+      window.location.hash = '';
+
+      // Re-join default auto IP room
+      if (ipInfo?.autoRoom?.roomId) {
+        joinRoom(ipInfo.autoRoom.roomId, '', socket);
+      }
+    });
+  };
+
+  /**
+   * Respond to candidate approval request (Host action)
+   */
+  const respondToApproval = (candidateSocketId, approve) => {
+    if (!socket || !currentRoom) return;
+
+    socket.emit('respond_approval', { candidateSocketId, roomId: currentRoom.id, approve }, (res) => {
+      setHostApprovalRequests((prev) => prev.filter((r) => r.candidateSocketId !== candidateSocketId));
+    });
+  };
+
+  /**
+   * Update Room Settings (Host action)
+   */
+  const updateRoomSettings = (newSettings) => {
+    return new Promise((resolve) => {
+      if (!socket || !currentRoom) return resolve({ success: false, error: 'Offline' });
+
+      socket.emit('update_room_settings', { roomId: currentRoom.id, settings: newSettings }, (res) => {
+        if (res && res.success) {
+          setCurrentRoom((prev) => ({ ...prev, ...res.room }));
+          resolve({ success: true, room: res.room });
+        } else {
+          resolve({ success: false, error: res?.error || 'Failed to update room settings' });
+        }
+      });
+    });
+  };
+
+  /**
    * Create a new Custom Room
    */
-  const createRoom = ({ roomId, name, password, isPrivate, maxUsers }) => {
+  const createRoom = ({ roomId, name, password, isPrivate, maxUsers, requireApproval }) => {
     return new Promise((resolve) => {
       if (!socket) return resolve({ success: false, error: 'Socket link offline' });
 
       socket.emit(
         'create_room',
-        { roomId, name, password, isPrivate, maxUsers, user },
+        { roomId, name, password, isPrivate, maxUsers, requireApproval, user },
         (response) => {
           if (response && response.success) {
             setCurrentRoom(response.room);
@@ -336,6 +415,12 @@ export function SocketProvider({ children }) {
         isAuthenticated,
         showProfileSetup,
         setShowProfileSetup,
+        isWaitingForApproval,
+        approvalRoomName,
+        hostApprovalRequests,
+        respondToApproval,
+        updateRoomSettings,
+        leaveRoom,
         loginAsGuest,
         loginWithPasskey,
         logout,

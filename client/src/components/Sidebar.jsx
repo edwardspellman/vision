@@ -9,14 +9,15 @@ import {
   X, 
   Copy, 
   Check,
-  Crown
+  Crown,
+  LogOut
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useWebRTC } from '../context/WebRTCContext';
 import { getAvatarSvg } from '../utils/avatar';
 
 export default function Sidebar({ isOpen, onClose, onOpenShareModal }) {
-  const { currentRoom, roomUsers, user, ipInfo } = useSocket();
+  const { currentRoom, roomUsers, user, ipInfo, leaveRoom } = useSocket();
   const { startCall } = useWebRTC();
   const [copied, setCopied] = React.useState(false);
 
@@ -152,8 +153,21 @@ export default function Sidebar({ isOpen, onClose, onOpenShareModal }) {
         </div>
 
         {/* Footer info */}
-        <div className="p-3 border-t border-[#161f30] bg-[#04060a] shrink-0 text-xs">
-          <div className="flex items-center justify-between text-zinc-400 mb-1">
+        <div className="p-3 border-t border-[#161f30] bg-[#04060a] shrink-0 text-xs space-y-2">
+          {currentRoom?.isCustom && (
+            <button
+              onClick={() => {
+                leaveRoom();
+                if (onClose) onClose();
+              }}
+              className="w-full py-2.5 bg-rose-500/10 hover:bg-rose-500/20 active:scale-[0.98] border border-rose-500/30 text-rose-400 font-bold text-xs rounded-xl transition flex items-center justify-center space-x-1.5 min-h-[40px]"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Leave Room</span>
+            </button>
+          )}
+
+          <div className="flex items-center justify-between text-zinc-400">
             <span>Network Status</span>
             <span className="text-[#00ff88] flex items-center space-x-1 font-semibold">
               <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-ping" />

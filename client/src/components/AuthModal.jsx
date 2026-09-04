@@ -110,29 +110,32 @@ export default function AuthModal() {
                   <button
                     type="button"
                     onClick={handleRandomize}
-                    className="text-xs text-[#00ff88] hover:underline font-semibold flex items-center space-x-1"
+                    className="text-xs text-[#00ff88] hover:underline font-semibold flex items-center space-x-1 min-h-[36px] px-2"
                   >
-                    <Sparkles className="w-3 h-3" />
+                    <Sparkles className="w-3.5 h-3.5" />
                     <span>Randomize</span>
                   </button>
                 </div>
 
-                <input
-                  type="text"
-                  value={handle}
-                  onChange={(e) => setHandle(e.target.value)}
-                  placeholder="e.g. Alex"
-                  className="w-full bg-[#05080f] border border-[#1a263d] focus:border-[#00ff88] rounded-xl px-4 py-2.5 text-xs text-white font-bold focus:outline-none"
-                  required
-                />
+                <div className="field">
+                  <MessageSquare className="input-icon" />
+                  <input
+                    type="text"
+                    value={handle}
+                    onChange={(e) => setHandle(e.target.value)}
+                    placeholder="Enter your username"
+                    className="input-field"
+                    required
+                  />
+                </div>
               </div>
 
-              <div className="p-3 bg-[#05080f] rounded-xl border border-[#161f30] text-xs text-zinc-400 space-y-1">
-                <div className="flex justify-between">
+              <div className="p-3.5 bg-[#05080f] rounded-2xl border border-[#161f30] text-xs text-zinc-400 space-y-1.5">
+                <div className="flex justify-between items-center">
                   <span className="text-zinc-500">Your Network:</span>
-                  <span className="text-zinc-200 font-semibold">{ipInfo?.autoRoom?.roomName || 'Local Wi-Fi Network'}</span>
+                  <span className="text-zinc-200 font-semibold truncate max-w-[200px]">{ipInfo?.autoRoom?.roomName || 'Local Wi-Fi Network'}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-zinc-500">Privacy:</span>
                   <span className="text-[#00ff88]">Zero sign-up required</span>
                 </div>
@@ -140,7 +143,7 @@ export default function AuthModal() {
 
               <button
                 type="submit"
-                className="w-full py-3 bg-[#00ff88] hover:bg-[#00e67a] text-black font-bold text-xs rounded-xl transition shadow-lg flex items-center justify-center space-x-2"
+                className="w-full button2 flex items-center justify-center space-x-2"
               >
                 <span>Enter Vision</span>
                 <ArrowRight className="w-4 h-4" />
@@ -152,33 +155,39 @@ export default function AuthModal() {
                 <label className="block text-xs font-bold text-zinc-300 mb-1.5">
                   Username
                 </label>
-                <input
-                  type="text"
-                  value={handle}
-                  onChange={(e) => setHandle(e.target.value)}
-                  placeholder="e.g. Alex"
-                  className="w-full bg-[#05080f] border border-[#1a263d] focus:border-[#00f0ff] rounded-xl px-4 py-2 text-xs text-white font-bold focus:outline-none"
-                  required
-                />
+                <div className="field">
+                  <MessageSquare className="input-icon text-[#00f0ff]" />
+                  <input
+                    type="text"
+                    value={handle}
+                    onChange={(e) => setHandle(e.target.value)}
+                    placeholder="Enter username"
+                    className="input-field"
+                    required
+                  />
+                </div>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-zinc-300 mb-1.5">
                   Password / PIN
                 </label>
-                <input
-                  type="password"
-                  value={passkey}
-                  onChange={(e) => setPasskey(e.target.value)}
-                  placeholder="Enter your password"
-                  className="w-full bg-[#05080f] border border-[#1a263d] focus:border-[#00f0ff] rounded-xl px-4 py-2 text-xs text-white focus:outline-none"
-                  required
-                />
+                <div className="field">
+                  <Lock className="input-icon text-[#00f0ff]" />
+                  <input
+                    type="password"
+                    value={passkey}
+                    onChange={(e) => setPasskey(e.target.value)}
+                    placeholder="Enter private key or password"
+                    className="input-field"
+                    required
+                  />
+                </div>
               </div>
 
               <button
                 type="submit"
-                className="w-full py-3 bg-[#00f0ff] hover:bg-[#00d0e0] text-black font-bold text-xs rounded-xl transition shadow-lg flex items-center justify-center space-x-2"
+                className="w-full button2 flex items-center justify-center space-x-2 bg-[#00f0ff] hover:bg-[#00d0e0]"
               >
                 <Lock className="w-4 h-4" />
                 <span>Sign In & Continue</span>

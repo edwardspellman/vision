@@ -3,6 +3,11 @@ const router = express.Router();
 const roomManager = require('../roomManager');
 const { getClientIp, getAutoRoomForIp, maskIp } = require('../ipUtils');
 
+// GET health status
+router.get('/health', (req, res) => {
+  res.json({ status: 'ok', time: Date.now() });
+});
+
 // GET client IP & network details
 router.get('/ip', (req, res) => {
   const ip = getClientIp(req);

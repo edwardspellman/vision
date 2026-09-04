@@ -17,7 +17,7 @@ module.exports = function socketHandler(io) {
      */
     socket.on('create_room', (data, callback) => {
       try {
-        const { roomId, name, password, isPrivate, maxUsers, user } = data;
+        const { roomId, name, password, isPrivate, maxUsers, requireApproval, user } = data;
         
         if (!roomId || !roomId.trim()) {
           return callback && callback({ success: false, error: 'Room ID is required' });
@@ -28,6 +28,7 @@ module.exports = function socketHandler(io) {
           name: name || roomId,
           password,
           isPrivate,
+          requireApproval,
           hostUser: user,
           maxUsers: maxUsers || 50
         });
@@ -36,7 +37,7 @@ module.exports = function socketHandler(io) {
           return callback && callback({ success: false, error: result.error });
         }
 
-        // Auto join the creator to this room
+        // Auto join the creator to this room as Host
         const joinRes = roomManager.addUser(socket.id, result.room.id, user || { name: 'Host' }, password);
         if (joinRes.success) {
           socket.join(result.room.id);
@@ -70,7 +71,7 @@ module.exports = function socketHandler(io) {
 
         // Attempt to find or create auto room
         let room = roomManager.rooms.get(targetRoomId);
-        if (!room && targetRoomId.startsWith('LAN-') || targetRoomId.startsWith('IP-')) {
+        if (!room && (targetRoomId.startsWith('LAN-') || targetRoomId.startsWith('IP-'))) {
           room = roomManager.getOrCreateAutoRoom({
             roomId: targetRoomId,
             roomName: autoRoom.roomName,
@@ -84,6 +85,38 @@ module.exports = function socketHandler(io) {
             success: false,
             error: 'Room not found. Check the Room ID or create a new room.'
           });
+        }
+
+        // Check password first
+        if (room.hasPassword && !roomManager.verifyPassword(room, password)) {
+          return callback && callback({
+            success: false,
+            error: 'Incorrect room password',
+            requiresPassword: true
+          });
+        }
+
+        // Check Host Approval (Knocking Mode) if user is not host and approval is enabled
+        const isHostUser = (room.hostId && user && user.id === room.hostId) || room.users.size === 0;
+        if (room.requireApproval && !isHostUser) {
+          const hostSocketId = roomManager.getHostSocketId(targetRoomId);
+          if (hostSocketId && hostSocketId !== socket.id) {
+            roomManager.addPendingApproval(socket.id, targetRoomId, user);
+            
+            // Emit to host that candidate is knocking
+            io.to(hostSocketId).emit('host_approval_request', {
+              candidateSocketId: socket.id,
+              candidateUser: user,
+              roomId: targetRoomId,
+              roomName: room.name
+            });
+
+            return callback && callback({
+              success: false,
+              pendingApproval: true,
+              message: 'Room requires host approval. Knocking request sent to host.'
+            });
+          }
         }
 
         // Add user to room
@@ -135,6 +168,89 @@ module.exports = function socketHandler(io) {
       } catch (err) {
         console.error('Error joining room:', err);
         if (callback) callback({ success: false, error: 'Internal server error joining room' });
+      }
+    });
+
+    /**
+     * HOST RESPOND TO APPROVAL (ACCEPT / DENY)
+     */
+    socket.on('respond_approval', ({ candidateSocketId, roomId, approve }, callback) => {
+      try {
+        const room = roomManager.rooms.get(roomId);
+        if (!room) return callback && callback({ success: false, error: 'Room not found' });
+
+        const hostSocketId = roomManager.getHostSocketId(roomId);
+        if (hostSocketId !== socket.id) {
+          return callback && callback({ success: false, error: 'Only the host can approve candidates' });
+        }
+
+        roomManager.removePendingApproval(candidateSocketId, roomId);
+
+        const candidateSocket = io.sockets.sockets.get(candidateSocketId);
+        if (!candidateSocket) {
+          return callback && callback({ success: false, error: 'Candidate disconnected' });
+        }
+
+        if (approve) {
+          const mapping = candidateSocket.handshake; // fallback user data
+          // Emit approval granted to candidate so candidate can re-trigger join_room with bypass
+          candidateSocket.emit('approval_granted', { roomId, roomName: room.name });
+          if (callback) callback({ success: true, approved: true });
+        } else {
+          candidateSocket.emit('approval_denied', { roomId, message: 'Host declined your request to join the room.' });
+          if (callback) callback({ success: true, approved: false });
+        }
+      } catch (err) {
+        console.error('Error responding to approval:', err);
+        if (callback) callback({ success: false, error: 'Error processing approval' });
+      }
+    });
+
+    /**
+     * UPDATE ROOM SETTINGS (Host)
+     */
+    socket.on('update_room_settings', ({ roomId, settings }, callback) => {
+      try {
+        const result = roomManager.updateRoomSettings(roomId, socket.id, settings);
+        if (result.success) {
+          io.to(roomId).emit('room_settings_updated', result.room);
+          if (callback) callback({ success: true, room: result.room });
+        } else {
+          if (callback) callback({ success: false, error: result.error });
+        }
+      } catch (err) {
+        console.error('Error updating room settings:', err);
+        if (callback) callback({ success: false, error: 'Failed to update settings' });
+      }
+    });
+
+    /**
+     * LEAVE ROOM (User voluntarily leaves current room)
+     */
+    socket.on('leave_room', (data, callback) => {
+      try {
+        const removal = roomManager.removeUser(socket.id);
+        if (removal) {
+          const { roomId, user, remainingUsers } = removal;
+          socket.leave(roomId);
+
+          socket.to(roomId).emit('user_left', {
+            user,
+            users: remainingUsers
+          });
+
+          const sysMsg = roomManager.addMessage(roomId, {
+            sender: { name: 'System', avatar: 'bot', color: '#6366f1' },
+            text: `${user.name} left the room.`,
+            type: 'system'
+          });
+          io.to(roomId).emit('new_message', sysMsg);
+        }
+
+        if (callback) callback({ success: true });
+      } catch (err) {
+        console.error('Error leaving room:', err);
+        if (callback) callback({ success: false, error: 'Failed to leave room' });
       }
     });
 

@@ -14,6 +14,7 @@ import ImageLightbox from './components/ImageLightbox';
 import InitialLoader from './components/InitialLoader';
 import AuthModal from './components/AuthModal';
 import ProfileSetupModal from './components/ProfileSetupModal';
+import ApprovalModal from './components/ApprovalModal';
 
 function MainApp() {
   const { connected, currentRoom, isAuthenticated, showProfileSetup } = useSocket();
@@ -28,7 +29,7 @@ function MainApp() {
   });
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#04060a] text-zinc-300 overflow-hidden font-mono antialiased">
+    <div className="flex flex-col h-dvh w-dvh bg-[#04060a] text-zinc-300 overflow-hidden font-mono antialiased">
       {/* 1. Initial Wormhole Splash Screen */}
       {showSplash && (
         <InitialLoader
@@ -47,6 +48,9 @@ function MainApp() {
         <ProfileSetupModal />
       )}
 
+      {/* Host Approval Waiting & Notification Modals */}
+      <ApprovalModal />
+
       {/* Top Header Navigation */}
       <Header
         onOpenRoomModal={() => setIsRoomModalOpen(true)}
@@ -61,7 +65,9 @@ function MainApp() {
       <div className="flex-1 flex min-h-0 relative">
         <main className="flex-1 flex flex-col min-w-0 h-full relative">
           <ChatArea
+            onOpenRoomModal={() => setIsRoomModalOpen(true)}
             onOpenShareModal={() => setIsShareModalOpen(true)}
+            onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
             onImageClick={(url) => setPreviewImage(url)}
           />
           <MessageInput />

@@ -50,22 +50,22 @@ export default function PasswordModal() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="relative">
+          <div className="field">
+            <KeyRound className="input-icon text-[#ffb700]" />
             <input
               type="password"
               autoFocus
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter room password"
-              className="w-full bg-[#05080f] border border-[#1a263d] focus:border-[#ffb700] rounded-xl px-4 py-2.5 text-xs text-[#ffb700] focus:outline-none pr-9 font-mono"
+              className="input-field text-[#ffb700] font-mono"
               required
             />
-            <KeyRound className="w-4 h-4 text-zinc-500 absolute right-3 top-3" />
           </div>
 
           <button
             type="submit"
-            className="w-full py-3 bg-[#ffb700] hover:bg-[#ffa700] text-black font-bold text-xs rounded-xl transition shadow-lg flex items-center justify-center space-x-2"
+            className="w-full button2 flex items-center justify-center space-x-2 bg-[#ffb700] hover:bg-[#ffa700]"
           >
             <span>Unlock & Join Room</span>
             <ArrowRight className="w-4 h-4" />
@@ -75,7 +75,7 @@ export default function PasswordModal() {
         <div className="mt-4 pt-3 border-t border-[#161f30] text-center">
           <button
             onClick={handleCancel}
-            className="text-xs text-zinc-400 hover:text-zinc-200 transition"
+            className="text-xs text-zinc-400 hover:text-zinc-200 transition min-h-[36px] px-2"
           >
             Cancel & Return to Local Network
           </button>
