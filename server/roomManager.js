@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { deleteUploadFile } = require('./fileCleaner');
 
 class RoomManager {
   constructor() {
@@ -8,31 +9,38 @@ class RoomManager {
     this.socketMap = new Map();
     // Maximum messages cached per room
     this.maxMessagesPerRoom = 200;
-    // Auto-purge messages older than 30 minutes (30 * 60 * 1000 ms)
+    // Auto-purge all chat history (messages, photos, files, system notifications) older than 30 minutes
     this.messageTtl = 30 * 60 * 1000;
-    // Auto-purge join/leave system notifications older than 25 minutes (25 * 60 * 1000 ms)
-    this.systemMessageTtl = 25 * 60 * 1000;
+    this.systemMessageTtl = 30 * 60 * 1000;
 
-    // Background interval to clean up expired messages every 30 seconds
-    setInterval(() => {
+    // Background interval to clean up expired messages and associated files every 30 seconds
+    const purgeTimer = setInterval(() => {
       this.purgeExpiredMessages();
     }, 30 * 1000);
+    if (purgeTimer.unref) {
+      purgeTimer.unref();
+    }
   }
 
   /**
-   * Purge messages: system notifications after 25 mins, others after 30 mins
+   * Purge messages: automatically remove every chat message and delete physical files from disk after 30 minutes
    */
   purgeExpiredMessages() {
-    const regCutoff = Date.now() - this.messageTtl;
-    const sysCutoff = Date.now() - this.systemMessageTtl;
+    const cutoff = Date.now() - this.messageTtl;
     for (const room of this.rooms.values()) {
       if (room.messages && room.messages.length > 0) {
-        room.messages = room.messages.filter(m => {
-          if (m.type === 'system') {
-            return m.timestamp >= sysCutoff;
+        const keptMessages = [];
+        for (const m of room.messages) {
+          if (m.timestamp >= cutoff) {
+            keptMessages.push(m);
+          } else {
+            // Message expired (> 30 mins): if it contains an uploaded file, delete it from disk
+            if (m.fileUrl) {
+              deleteUploadFile(m.fileUrl);
+            }
           }
-          return m.timestamp >= regCutoff;
-        });
+        }
+        room.messages = keptMessages;
       }
     }
   }
@@ -246,6 +254,11 @@ class RoomManager {
         setTimeout(() => {
           const current = this.rooms.get(roomId);
           if (current && current.users.size === 0) {
+            if (current.messages) {
+              for (const m of current.messages) {
+                if (m.fileUrl) deleteUploadFile(m.fileUrl);
+              }
+            }
             this.rooms.delete(roomId);
           }
         }, 10 * 60 * 1000);
@@ -338,19 +351,23 @@ class RoomManager {
   }
 
   /**
-   * Get messages in room (filtering out system messages older than 25 mins, others older than 30 mins)
+   * Get messages in room (filtering out all messages and files older than 30 mins)
    */
   getMessages(roomId) {
     const room = this.rooms.get(roomId);
     if (!room) return [];
-    const regCutoff = Date.now() - this.messageTtl;
-    const sysCutoff = Date.now() - this.systemMessageTtl;
-    room.messages = room.messages.filter(m => {
-      if (m.type === 'system') {
-        return m.timestamp >= sysCutoff;
+    const cutoff = Date.now() - this.messageTtl;
+    const keptMessages = [];
+    for (const m of room.messages) {
+      if (m.timestamp >= cutoff) {
+        keptMessages.push(m);
+      } else {
+        if (m.fileUrl) {
+          deleteUploadFile(m.fileUrl);
+        }
       }
-      return m.timestamp >= regCutoff;
-    });
+    }
+    room.messages = keptMessages;
     return room.messages;
   }
 }

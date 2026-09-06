@@ -10,6 +10,10 @@ const fs = require('fs');
 const socketHandler = require('./socketHandler');
 const apiRoutes = require('./routes/api');
 const uploadRoutes = require('./routes/upload');
+const { startFileCleaner } = require('./fileCleaner');
+
+// Initialize 30-Minute Ephemeral Storage File Cleaner
+startFileCleaner(30 * 1000);
 
 const app = express();
 const server = http.createServer(app);
@@ -48,9 +52,17 @@ app.use('/uploads', express.static(uploadsDir, {
     res.setHeader('X-Content-Type-Options', 'nosniff');
   }
 }));
+// Explicit 404 for expired or missing uploaded files
+app.use('/uploads', (req, res) => {
+  res.status(404).json({ success: false, error: 'File expired or not found' });
+});
 
 app.use('/api', apiRoutes);
 app.use('/api/upload', uploadRoutes);
+// Explicit 404 for unknown API routes
+app.use('/api', (req, res) => {
+  res.status(404).json({ success: false, error: 'API endpoint not found' });
+});
 
 const io = new Server(server, {
   cors: {
@@ -84,5 +96,6 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`⚡ VISION - Ephemeral Network Bridge online on http://localhost:${PORT}`);
   console.log(`📡 Socket.IO Real-time Bridge & WebRTC Signaling active`);
   console.log(`🛡️  Zero-Trace IP Subnet Routing initialized`);
+  console.log(`⏱️  30-Minute Ephemeral Storage & Message Purge active`);
   console.log(`======================================================\n`);
 });

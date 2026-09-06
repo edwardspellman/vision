@@ -136,19 +136,11 @@ export function SocketProvider({ children }) {
     };
   }, []);
 
-  // Automatically purge client messages: system notifications after 25 minutes, regular messages after 30 minutes
+  // Automatically purge client messages: all chat history and media removed after 30 minutes
   useEffect(() => {
     const interval = setInterval(() => {
-      const sysCutoff = Date.now() - 25 * 60 * 1000; // 25 minutes for join/leave notifications
-      const regCutoff = Date.now() - 30 * 60 * 1000; // 30 minutes for chat messages
-      setMessages((prev) =>
-        prev.filter((m) => {
-          if (m.type === 'system') {
-            return m.timestamp >= sysCutoff;
-          }
-          return m.timestamp >= regCutoff;
-        })
-      );
+      const cutoff = Date.now() - 30 * 60 * 1000; // 30 minutes
+      setMessages((prev) => prev.filter((m) => m.timestamp >= cutoff));
     }, 10 * 1000);
 
     return () => clearInterval(interval);

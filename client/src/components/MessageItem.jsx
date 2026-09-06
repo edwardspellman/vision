@@ -19,6 +19,7 @@ export default function MessageItem({ message, onImageClick }) {
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
+  const [mediaExpired, setMediaExpired] = useState(false);
   const audioRef = useRef(null);
 
   const isMe = message.sender?.id === user.id || message.sender?.name === user.name;
@@ -144,17 +145,24 @@ export default function MessageItem({ message, onImageClick }) {
           {/* Image Content */}
           {message.type === 'image' && (
             <div className="space-y-1.5">
-              <div 
-                onClick={() => onImageClick(message.fileUrl)}
-                className="rounded-lg overflow-hidden cursor-pointer max-w-sm max-h-72 border border-[#161f30] hover:border-[#00ff88]/50 transition"
-              >
-                <img
-                  src={message.fileUrl}
-                  alt={message.fileName || 'Shared Image'}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-              </div>
+              {mediaExpired ? (
+                <div className="p-3 rounded-lg bg-[#04060a] border border-[#161f30] text-zinc-500 text-xs font-mono">
+                  <span>⏱️ File expired (30m Ephemeral Purge)</span>
+                </div>
+              ) : (
+                <div 
+                  onClick={() => onImageClick && onImageClick(message.fileUrl)}
+                  className="rounded-lg overflow-hidden cursor-pointer max-w-sm max-h-72 border border-[#161f30] hover:border-[#00ff88]/50 transition"
+                >
+                  <img
+                    src={message.fileUrl}
+                    alt={message.fileName || 'Shared Image'}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    onError={() => setMediaExpired(true)}
+                  />
+                </div>
+              )}
               {message.text && (
                 <p className="text-xs text-zinc-400 mt-1">{message.text}</p>
               )}
@@ -163,38 +171,45 @@ export default function MessageItem({ message, onImageClick }) {
 
           {/* Voice Note */}
           {message.type === 'audio' && (
-            <div className="flex items-center space-x-3 py-1 pr-2 min-w-[210px]">
-              <button
-                onClick={handleToggleAudio}
-                className="w-8 h-8 rounded-lg bg-[#00ff88]/10 hover:bg-[#00ff88]/20 border border-[#00ff88]/40 text-[#00ff88] flex items-center justify-center transition shrink-0"
-              >
-                {isPlayingAudio ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
-              </button>
-
-              <audio
-                ref={audioRef}
-                src={message.fileUrl}
-                onEnded={() => setIsPlayingAudio(false)}
-                className="hidden"
-              />
-
-              {/* Audio Wave Bars */}
-              <div className="flex-1 flex items-center space-x-1 h-5">
-                {[8, 14, 6, 18, 12, 8, 16, 10, 14, 6, 10].map((h, i) => (
-                  <div
-                    key={i}
-                    style={{ height: `${isPlayingAudio ? h : 4}px` }}
-                    className={`w-1 rounded-sm transition-all duration-300 ${
-                      isPlayingAudio ? 'bg-[#00ff88]' : 'bg-[#1e293b]'
-                    }`}
-                  />
-                ))}
+            mediaExpired ? (
+              <div className="py-1 px-2 text-zinc-500 text-xs font-mono">
+                <span>⏱️ Audio expired (30m Ephemeral Purge)</span>
               </div>
+            ) : (
+              <div className="flex items-center space-x-3 py-1 pr-2 min-w-[210px]">
+                <button
+                  onClick={handleToggleAudio}
+                  className="w-8 h-8 rounded-lg bg-[#00ff88]/10 hover:bg-[#00ff88]/20 border border-[#00ff88]/40 text-[#00ff88] flex items-center justify-center transition shrink-0"
+                >
+                  {isPlayingAudio ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+                </button>
 
-              <span className="text-[11px] text-zinc-400 shrink-0 font-mono">
-                {message.audioDuration ? `${Math.round(message.audioDuration)}s` : 'Voice'}
-              </span>
-            </div>
+                <audio
+                  ref={audioRef}
+                  src={message.fileUrl}
+                  onEnded={() => setIsPlayingAudio(false)}
+                  onError={() => setMediaExpired(true)}
+                  className="hidden"
+                />
+
+                {/* Audio Wave Bars */}
+                <div className="flex-1 flex items-center space-x-1 h-5">
+                  {[8, 14, 6, 18, 12, 8, 16, 10, 14, 6, 10].map((h, i) => (
+                    <div
+                      key={i}
+                      style={{ height: `${isPlayingAudio ? h : 4}px` }}
+                      className={`w-1 rounded-sm transition-all duration-300 ${
+                        isPlayingAudio ? 'bg-[#00ff88]' : 'bg-[#1e293b]'
+                      }`}
+                    />
+                  ))}
+                </div>
+
+                <span className="text-[11px] text-zinc-400 shrink-0 font-mono">
+                  {message.audioDuration ? `${Math.round(message.audioDuration)}s` : 'Voice'}
+                </span>
+              </div>
+            )
           )}
 
           {/* File Attachment */}
