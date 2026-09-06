@@ -9,14 +9,15 @@ import {
   X, 
   Copy, 
   Check,
-  Crown
+  Crown,
+  LogOut
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useWebRTC } from '../context/WebRTCContext';
 import { getAvatarSvg } from '../utils/avatar';
 
 export default function Sidebar({ isOpen, onClose, onOpenShareModal }) {
-  const { currentRoom, roomUsers, user, ipInfo } = useSocket();
+  const { currentRoom, roomUsers, user, ipInfo, leaveRoom } = useSocket();
   const { startCall } = useWebRTC();
   const [copied, setCopied] = React.useState(false);
 
@@ -84,6 +85,17 @@ export default function Sidebar({ isOpen, onClose, onOpenShareModal }) {
             <p className="text-[11px] text-zinc-400 mt-0.5 truncate font-mono">
               ID: <span className="text-[#00f0ff]">{currentRoom?.id}</span>
             </p>
+
+            {currentRoom?.isCustom && (
+              <button
+                onClick={leaveRoom}
+                className="w-full mt-2.5 py-1.5 px-3 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs font-bold flex items-center justify-center space-x-1.5 transition"
+                title="Leave custom room and return to Local Wi-Fi"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Leave</span>
+              </button>
+            )}
           </div>
         </div>
 

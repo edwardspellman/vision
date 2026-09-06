@@ -17,7 +17,7 @@ module.exports = function socketHandler(io) {
      */
     socket.on('create_room', (data, callback) => {
       try {
-        const { roomId, name, password, isPrivate, maxUsers, user } = data;
+        const { roomId, name, password, isPrivate, maxUsers, settings, user } = data;
         
         if (!roomId || !roomId.trim()) {
           return callback && callback({ success: false, error: 'Room ID is required' });
@@ -29,7 +29,8 @@ module.exports = function socketHandler(io) {
           password,
           isPrivate,
           hostUser: user,
-          maxUsers: maxUsers || 50
+          maxUsers: maxUsers || 50,
+          settings
         });
 
         if (!result.success) {
@@ -51,6 +52,32 @@ module.exports = function socketHandler(io) {
       } catch (err) {
         console.error('Error creating room:', err);
         if (callback) callback({ success: false, error: 'Internal server error creating room' });
+      }
+    });
+
+    /**
+     * UPDATE ROOM SETTINGS (Host only)
+     */
+    socket.on('update_room_settings', (data, callback) => {
+      try {
+        const { roomId, name, password, maxUsers, settings } = data;
+        const result = roomManager.updateRoomSettings(socket.id, roomId, { name, password, maxUsers, settings });
+        
+        if (result.success) {
+          io.to(roomId).emit('room_updated', result.room);
+          const sysMsg = roomManager.addMessage(roomId, {
+            sender: { name: 'System', avatar: 'bot', color: '#6366f1' },
+            text: `Room settings updated by Host.`,
+            type: 'system'
+          });
+          io.to(roomId).emit('new_message', sysMsg);
+          if (callback) callback({ success: true, room: result.room });
+        } else {
+          if (callback) callback({ success: false, error: result.error });
+        }
+      } catch (err) {
+        console.error('Error updating room settings:', err);
+        if (callback) callback({ success: false, error: 'Failed to update settings' });
       }
     });
 
@@ -150,14 +177,28 @@ module.exports = function socketHandler(io) {
           return callback && callback({ success: false, error: 'Not in this room' });
         }
 
+        const room = roomManager.rooms.get(roomId);
+        if (room && room.settings?.onlyHostCanPost) {
+          const isHost = (room.hostId && mapping.user.id === room.hostId) || mapping.user.isHost;
+          if (!isHost) {
+            return callback && callback({ success: false, error: 'Only the room host can post messages in this room.' });
+          }
+        }
+
+        const safeText = (typeof text === 'string') ? text.slice(0, 10000) : '';
+        const allowedTypes = ['text', 'image', 'audio', 'video', 'file'];
+        const safeType = allowedTypes.includes(type) ? type : 'text';
+        const safeFileUrl = (typeof fileUrl === 'string' && fileUrl.startsWith('/uploads/')) ? fileUrl : null;
+        const safeFileName = (typeof fileName === 'string') ? fileName.slice(0, 255) : null;
+
         const message = roomManager.addMessage(roomId, {
           sender: mapping.user,
-          text,
-          type: type || 'text',
-          fileUrl,
-          fileName,
-          fileSize,
-          audioDuration
+          text: safeText,
+          type: safeType,
+          fileUrl: safeFileUrl,
+          fileName: safeFileName,
+          fileSize: Number(fileSize) || null,
+          audioDuration: Number(audioDuration) || null
         });
 
         if (message) {

@@ -43,7 +43,11 @@ const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
-app.use('/uploads', express.static(uploadsDir));
+app.use('/uploads', express.static(uploadsDir, {
+  setHeaders: (res) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+  }
+}));
 
 app.use('/api', apiRoutes);
 app.use('/api/upload', uploadRoutes);
@@ -77,7 +81,7 @@ if (fs.existsSync(clientDistPath)) {
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`\n======================================================`);
-  console.log(`⚡ VISION // Stealth Ephemeral Network online on http://localhost:${PORT}`);
+  console.log(`⚡ VISION - Ephemeral Network Bridge online on http://localhost:${PORT}`);
   console.log(`📡 Socket.IO Real-time Bridge & WebRTC Signaling active`);
   console.log(`🛡️  Zero-Trace IP Subnet Routing initialized`);
   console.log(`======================================================\n`);

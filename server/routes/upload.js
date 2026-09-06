@@ -23,30 +23,47 @@ const storage = multer.diskStorage({
   }
 });
 
-// Max 50MB per file
+const BLOCKED_EXTENSIONS = new Set([
+  '.exe', '.bat', '.cmd', '.sh', '.ps1', '.vbs', '.js', '.mjs',
+  '.html', '.htm', '.php', '.phtml', '.shtml', '.hta', '.jar', '.jsp', '.asp', '.aspx'
+]);
+
+// Max 50MB per file with security fileFilter
 const upload = multer({
   storage,
-  limits: { fileSize: 50 * 1024 * 1024 }
+  limits: { fileSize: 50 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (BLOCKED_EXTENSIONS.has(ext)) {
+      return cb(new Error('This file format is restricted for platform security.'));
+    }
+    cb(null, true);
+  }
 });
 
-// Single file upload endpoint
-router.post('/', upload.single('file'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ success: false, error: 'No file provided' });
-  }
+// Single file upload endpoint with explicit security error handling
+router.post('/', (req, res) => {
+  upload.single('file')(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ success: false, error: err.message || 'File upload failed' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'No file provided' });
+    }
 
-  const fileUrl = `/uploads/${req.file.filename}`;
-  const isImage = req.file.mimetype.startsWith('image/');
-  const isAudio = req.file.mimetype.startsWith('audio/');
-  const isVideo = req.file.mimetype.startsWith('video/');
+    const fileUrl = `/uploads/${req.file.filename}`;
+    const isImage = req.file.mimetype.startsWith('image/');
+    const isAudio = req.file.mimetype.startsWith('audio/');
+    const isVideo = req.file.mimetype.startsWith('video/');
 
-  res.json({
-    success: true,
-    fileUrl,
-    fileName: req.file.originalname,
-    fileSize: req.file.size,
-    mimeType: req.file.mimetype,
-    type: isImage ? 'image' : isAudio ? 'audio' : isVideo ? 'video' : 'file'
+    res.json({
+      success: true,
+      fileUrl,
+      fileName: req.file.originalname,
+      fileSize: req.file.size,
+      mimeType: req.file.mimetype,
+      type: isImage ? 'image' : isAudio ? 'audio' : isVideo ? 'video' : 'file'
+    });
   });
 });
 

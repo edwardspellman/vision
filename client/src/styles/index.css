@@ -134,3 +134,129 @@
     box-shadow: 0px 10px 20px rgba(0, 255, 136, 0);
   }
 }
+
+/* From Uiverse.io by Praashoo7 - Custom Room Form Styling (Clean Sleek Dark Theme) */ 
+.uiverse-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 1.8em;
+  background-color: #171717;
+  border-radius: 25px;
+  transition: .4s ease-in-out;
+  border: 1px solid #262626;
+}
+
+.uiverse-form:hover {
+  transform: scale(1.01);
+  border: 1px solid #383838;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+}
+
+.uiverse-heading {
+  text-align: center;
+  margin-bottom: 0.5em;
+  color: rgb(255, 255, 255);
+  font-size: 1.2em;
+  font-weight: 700;
+}
+
+.uiverse-field {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  border-radius: 25px;
+  padding: 0.65em 1em;
+  border: 1px solid transparent;
+  outline: none;
+  color: white;
+  background-color: #171717;
+  box-shadow: inset 2px 5px 10px rgb(5, 5, 5);
+  transition: all .3s ease;
+}
+
+.uiverse-field:focus-within {
+  box-shadow: inset 2px 5px 10px rgb(5, 5, 5);
+  border: 1px solid #404040;
+}
+
+.uiverse-input-icon {
+  height: 1.2em;
+  width: 1.2em;
+  color: #a3a3a3;
+  flex-shrink: 0;
+}
+
+.uiverse-input-field {
+  background: none;
+  border: none;
+  outline: none;
+  width: 100%;
+  color: #e5e5e5;
+  font-size: 0.85rem;
+}
+
+.uiverse-btn-row {
+  display: flex;
+  justify-content: center;
+  flex-direction: row;
+  margin-top: 1.5em;
+  gap: 10px;
+}
+
+.uiverse-button1 {
+  padding: 0.65em 1.4em;
+  border-radius: 25px;
+  border: 1px solid #333333;
+  outline: none;
+  transition: .4s ease-in-out;
+  background-color: #252525;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.uiverse-button1:hover {
+  background-color: #333333;
+  color: white;
+  border-color: #525252;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+.uiverse-button2 {
+  padding: 0.65em 2.3em;
+  border-radius: 25px;
+  border: 1px solid #333333;
+  outline: none;
+  transition: .4s ease-in-out;
+  background-color: #252525;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.uiverse-button2:hover {
+  background-color: #333333;
+  color: white;
+  border-color: #525252;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+.uiverse-button3 {
+  padding: 0.65em 1.2em;
+  border-radius: 25px;
+  border: 1px solid #333333;
+  outline: none;
+  transition: .4s ease-in-out;
+  background-color: #252525;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.uiverse-button3:hover {
+  background-color: #ff3366;
+  color: white;
+  box-shadow: 0 4px 15px rgba(255, 51, 102, 0.3);
+}

@@ -1,7 +1,7 @@
 {
   "name": "uchat-server",
   "version": "1.0.0",
-  "description": "Backend engine for UChat with Socket.IO, IP subnet matching & WebRTC signaling",
+  "description": "Backend engine for Vision with Socket.IO, IP subnet matching & WebRTC signaling",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

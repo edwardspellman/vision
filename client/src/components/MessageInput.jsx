@@ -6,9 +6,21 @@ import {
   Mic, 
   Loader2, 
   X,
-  CornerDownLeft
+  CornerDownLeft,
+  Lock,
+  Menu,
+  Share2,
+  Plus,
+  LogIn,
+  Settings,
+  User,
+  Users,
+  Volume2,
+  VolumeX,
+  LogOut
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
+import { sound } from '../utils/sound';
 import VoiceRecorder from './VoiceRecorder';
 
 const EMOJI_LIST = [
@@ -16,11 +28,20 @@ const EMOJI_LIST = [
   '😎', '🥳', '🤔', '🙌', '✨', '⚡', '💀', '🛡️', '🎯', '✅'
 ];
 
-export default function MessageInput() {
-  const { sendMessage, setTyping } = useSocket();
+export default function MessageInput({
+  onOpenShareModal,
+  onOpenRoomModal,
+  onOpenProfileModal,
+  onOpenRoomSettingsModal,
+  onToggleSidebar,
+  soundMuted,
+  setSoundMuted
+}) {
+  const { sendMessage, setTyping, currentRoom, isHost, leaveRoom } = useSocket();
   const [text, setText] = useState('');
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showPlatformMenu, setShowPlatformMenu] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -29,11 +50,15 @@ export default function MessageInput() {
   const textareaRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const emojiPickerRef = useRef(null);
+  const platformMenuRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target)) {
         setShowEmojiPicker(false);
+      }
+      if (platformMenuRef.current && !platformMenuRef.current.contains(e.target)) {
+        setShowPlatformMenu(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -140,6 +165,21 @@ export default function MessageInput() {
     }
   };
 
+  const onlyHostCanPost = currentRoom?.settings?.onlyHostCanPost && !isHost;
+  const allowFileUploads = isHost || (currentRoom?.settings?.allowFileUploads ?? true);
+  const allowVoiceNotes = isHost || (currentRoom?.settings?.allowVoiceNotes ?? true);
+
+  if (onlyHostCanPost) {
+    return (
+      <div className="p-3.5 bg-[#05080f] border-t border-[#161f30] shrink-0 font-mono text-center select-none">
+        <div className="inline-flex items-center space-x-2 px-4 py-2 bg-[#080d17] border border-[#00f0ff]/30 text-[#00f0ff] rounded-xl text-xs font-bold shadow-md">
+          <Lock className="w-4 h-4 text-[#00f0ff]" />
+          <span>Announcement Mode Active — Only Room Host Can Post Messages</span>
+        </div>
+      </div>
+    );
+  }
+
   if (isRecordingVoice) {
     return (
       <div className="p-3 bg-[#05080f] border-t border-[#161f30] shrink-0 font-mono">
@@ -205,6 +245,225 @@ export default function MessageInput() {
         </div>
       )}
 
+      {/* Platform Functions Menu Popover */}
+      {showPlatformMenu && (
+        <div
+          ref={platformMenuRef}
+          className="absolute bottom-full right-2 sm:right-4 mb-2 w-72 sm:w-80 bg-[#080d17]/95 backdrop-blur-md border border-[#1a263d] rounded-2xl shadow-2xl p-3 z-50 animate-fade-in font-mono select-none"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#161f30]">
+            <div className="flex items-center space-x-2">
+              <div className="w-5 h-5 rounded-md bg-[#00ff88]/10 border border-[#00ff88]/30 flex items-center justify-center">
+                <Menu className="w-3 h-3 text-[#00ff88]" />
+              </div>
+              <span className="text-xs font-bold text-white tracking-wide">Platform Functions</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowPlatformMenu(false)}
+              className="p-1 text-zinc-400 hover:text-white rounded-lg transition"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Quick Access List */}
+          <div className="grid grid-cols-2 gap-1.5 max-h-[320px] overflow-y-auto pr-0.5">
+            {/* Share / QR */}
+            <button
+              type="button"
+              onClick={() => {
+                setShowPlatformMenu(false);
+                onOpenShareModal && onOpenShareModal();
+              }}
+              className="flex items-center space-x-2 p-2 rounded-xl bg-[#0b1220] hover:bg-[#111c33] border border-[#162238] hover:border-[#00ff88]/40 text-left transition group"
+            >
+              <div className="p-1.5 rounded-lg bg-[#00ff88]/10 text-[#00ff88] group-hover:scale-110 transition-transform shrink-0">
+                <Share2 className="w-3.5 h-3.5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold text-zinc-200 group-hover:text-[#00ff88] truncate">Share</p>
+                <p className="text-[9px] text-zinc-500 truncate">QR & Invite</p>
+              </div>
+            </button>
+
+            {/* Create Room */}
+            <button
+              type="button"
+              onClick={() => {
+                setShowPlatformMenu(false);
+                onOpenRoomModal && onOpenRoomModal('create');
+              }}
+              className="flex items-center space-x-2 p-2 rounded-xl bg-[#0b1220] hover:bg-[#111c33] border border-[#162238] hover:border-[#00f0ff]/40 text-left transition group"
+            >
+              <div className="p-1.5 rounded-lg bg-[#00f0ff]/10 text-[#00f0ff] group-hover:scale-110 transition-transform shrink-0">
+                <Plus className="w-3.5 h-3.5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold text-zinc-200 group-hover:text-[#00f0ff] truncate">Create Room</p>
+                <p className="text-[9px] text-zinc-500 truncate">New room</p>
+              </div>
+            </button>
+
+            {/* Join Room */}
+            <button
+              type="button"
+              onClick={() => {
+                setShowPlatformMenu(false);
+                onOpenRoomModal && onOpenRoomModal('join');
+              }}
+              className="flex items-center space-x-2 p-2 rounded-xl bg-[#0b1220] hover:bg-[#111c33] border border-[#162238] hover:border-cyan-400/40 text-left transition group"
+            >
+              <div className="p-1.5 rounded-lg bg-cyan-400/10 text-cyan-400 group-hover:scale-110 transition-transform shrink-0">
+                <LogIn className="w-3.5 h-3.5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold text-zinc-200 group-hover:text-cyan-400 truncate">Join Room</p>
+                <p className="text-[9px] text-zinc-500 truncate">Enter ID</p>
+              </div>
+            </button>
+
+            {/* Room Settings (Host Only) */}
+            {isHost && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPlatformMenu(false);
+                  onOpenRoomSettingsModal && onOpenRoomSettingsModal();
+                }}
+                className="flex items-center space-x-2 p-2 rounded-xl bg-[#0b1220] hover:bg-[#111c33] border border-[#162238] hover:border-[#00ff88]/40 text-left transition group"
+              >
+                <div className="p-1.5 rounded-lg bg-[#00ff88]/10 text-[#00ff88] group-hover:rotate-45 transition-transform shrink-0">
+                  <Settings className="w-3.5 h-3.5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold text-zinc-200 group-hover:text-[#00ff88] truncate">Setting</p>
+                  <p className="text-[9px] text-zinc-500 truncate">Host control</p>
+                </div>
+              </button>
+            )}
+
+            {/* Profile */}
+            <button
+              type="button"
+              onClick={() => {
+                setShowPlatformMenu(false);
+                onOpenProfileModal && onOpenProfileModal();
+              }}
+              className="flex items-center space-x-2 p-2 rounded-xl bg-[#0b1220] hover:bg-[#111c33] border border-[#162238] hover:border-[#00ff88]/40 text-left transition group"
+            >
+              <div className="p-1.5 rounded-lg bg-[#00ff88]/10 text-[#00ff88] group-hover:scale-110 transition-transform shrink-0">
+                <User className="w-3.5 h-3.5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold text-zinc-200 group-hover:text-[#00ff88] truncate">Profile</p>
+                <p className="text-[9px] text-zinc-500 truncate">Avatar & name</p>
+              </div>
+            </button>
+
+            {/* Members & Calls */}
+            <button
+              type="button"
+              onClick={() => {
+                setShowPlatformMenu(false);
+                onToggleSidebar && onToggleSidebar();
+              }}
+              className="flex items-center space-x-2 p-2 rounded-xl bg-[#0b1220] hover:bg-[#111c33] border border-[#162238] hover:border-violet-400/40 text-left transition group"
+            >
+              <div className="p-1.5 rounded-lg bg-violet-400/10 text-violet-400 group-hover:scale-110 transition-transform shrink-0">
+                <Users className="w-3.5 h-3.5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold text-zinc-200 group-hover:text-violet-400 truncate">Members</p>
+                <p className="text-[9px] text-zinc-500 truncate">Calls & users</p>
+              </div>
+            </button>
+
+            {/* Attach File */}
+            {allowFileUploads && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPlatformMenu(false);
+                  fileInputRef.current?.click();
+                }}
+                className="flex items-center space-x-2 p-2 rounded-xl bg-[#0b1220] hover:bg-[#111c33] border border-[#162238] hover:border-emerald-400/40 text-left transition group"
+              >
+                <div className="p-1.5 rounded-lg bg-emerald-400/10 text-emerald-400 group-hover:scale-110 transition-transform shrink-0">
+                  <Paperclip className="w-3.5 h-3.5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold text-zinc-200 group-hover:text-emerald-400 truncate">Send File</p>
+                  <p className="text-[9px] text-zinc-500 truncate">Upload doc</p>
+                </div>
+              </button>
+            )}
+
+            {/* Voice Note */}
+            {allowVoiceNotes && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPlatformMenu(false);
+                  setIsRecordingVoice(true);
+                }}
+                className="flex items-center space-x-2 p-2 rounded-xl bg-[#0b1220] hover:bg-[#111c33] border border-[#162238] hover:border-rose-400/40 text-left transition group"
+              >
+                <div className="p-1.5 rounded-lg bg-rose-400/10 text-rose-400 group-hover:scale-110 transition-transform shrink-0">
+                  <Mic className="w-3.5 h-3.5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold text-zinc-200 group-hover:text-rose-400 truncate">Voice Note</p>
+                  <p className="text-[9px] text-zinc-500 truncate">Record audio</p>
+                </div>
+              </button>
+            )}
+
+            {/* Sound FX Toggle */}
+            <button
+              type="button"
+              onClick={() => {
+                const next = !soundMuted;
+                setSoundMuted && setSoundMuted(next);
+                sound.setMuted(next);
+              }}
+              className="flex items-center space-x-2 p-2 rounded-xl bg-[#0b1220] hover:bg-[#111c33] border border-[#162238] hover:border-amber-400/40 text-left transition group"
+            >
+              <div className="p-1.5 rounded-lg bg-amber-400/10 text-amber-400 group-hover:scale-110 transition-transform shrink-0">
+                {soundMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold text-zinc-200 group-hover:text-amber-400 truncate">
+                  {soundMuted ? 'Unmute' : 'Mute'}
+                </p>
+                <p className="text-[9px] text-zinc-500 truncate">Sound FX</p>
+              </div>
+            </button>
+
+            {/* Leave Room (Custom Room only) */}
+            {currentRoom?.isCustom && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPlatformMenu(false);
+                  leaveRoom();
+                }}
+                className="flex items-center space-x-2 p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-left transition group"
+              >
+                <div className="p-1.5 rounded-lg bg-rose-500/20 text-rose-400 group-hover:-translate-x-0.5 transition-transform shrink-0">
+                  <LogOut className="w-3.5 h-3.5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold text-rose-400 truncate">Leave</p>
+                  <p className="text-[9px] text-rose-500/80 truncate">Back to Wi-Fi</p>
+                </div>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Input Row */}
       <form onSubmit={handleSend} className="flex items-end space-x-2">
         <input
@@ -217,14 +476,16 @@ export default function MessageInput() {
 
         {/* Action Controls (Left) */}
         <div className="flex items-center space-x-1 pb-1">
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="p-2 text-zinc-400 hover:text-[#00f0ff] rounded-xl bg-[#080d17] border border-[#161f30] hover:border-[#00f0ff]/40 transition"
-            title="Attach file or image"
-          >
-            <Paperclip className="w-4 h-4" />
-          </button>
+          {allowFileUploads && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="p-2 text-zinc-400 hover:text-[#00f0ff] rounded-xl bg-[#080d17] border border-[#161f30] hover:border-[#00f0ff]/40 transition"
+              title="Attach file or image"
+            >
+              <Paperclip className="w-4 h-4" />
+            </button>
+          )}
 
           <button
             type="button"
@@ -251,15 +512,32 @@ export default function MessageInput() {
 
         {/* Action Controls (Right) */}
         <div className="flex items-center space-x-1 pb-1">
+          {/* Small Bar Icon on bottom side of mic button to access every function of platform */}
+          <button
+            type="button"
+            onClick={() => setShowPlatformMenu(!showPlatformMenu)}
+            className={`p-2 rounded-xl border transition ${
+              showPlatformMenu
+                ? 'bg-[#00ff88]/20 border-[#00ff88] text-[#00ff88]'
+                : 'bg-[#080d17] border-[#161f30] text-zinc-400 hover:text-[#00ff88] hover:border-[#00ff88]/40'
+            }`}
+            title="All Platform Functions"
+            aria-label="Platform functions menu"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
+
           {!text.trim() && !selectedFile ? (
-            <button
-              type="button"
-              onClick={() => setIsRecordingVoice(true)}
-              className="p-2 text-zinc-400 hover:text-[#ff3366] rounded-xl bg-[#080d17] border border-[#161f30] hover:border-[#ff3366]/40 transition"
-              title="Record voice note"
-            >
-              <Mic className="w-4 h-4" />
-            </button>
+            allowVoiceNotes && (
+              <button
+                type="button"
+                onClick={() => setIsRecordingVoice(true)}
+                className="p-2 text-zinc-400 hover:text-[#ff3366] rounded-xl bg-[#080d17] border border-[#161f30] hover:border-[#ff3366]/40 transition"
+                title="Record voice note"
+              >
+                <Mic className="w-4 h-4" />
+              </button>
+            )
           ) : (
             <button
               type="submit"

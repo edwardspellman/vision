@@ -1,4 +1,4 @@
-# ⚡ UChat — Instant IP & Room-Based Real-Time Messenger
+# ⚡ Vision — Instant IP & Room-Based Real-Time Messenger
 
 > Inspired by `ipchat.in`, enhanced with custom room IDs, password protection, WebRTC peer-to-peer video/voice calls, live voice notes, drag-and-drop media sharing, and mobile QR code pairing.
 

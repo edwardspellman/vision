@@ -10,6 +10,8 @@ class RoomManager {
     this.maxMessagesPerRoom = 200;
     // Auto-purge messages older than 30 minutes (30 * 60 * 1000 ms)
     this.messageTtl = 30 * 60 * 1000;
+    // Auto-purge join/leave system notifications older than 25 minutes (25 * 60 * 1000 ms)
+    this.systemMessageTtl = 25 * 60 * 1000;
 
     // Background interval to clean up expired messages every 30 seconds
     setInterval(() => {
@@ -18,13 +20,19 @@ class RoomManager {
   }
 
   /**
-   * Purge messages older than 30 minutes from all rooms
+   * Purge messages: system notifications after 25 mins, others after 30 mins
    */
   purgeExpiredMessages() {
-    const cutoff = Date.now() - this.messageTtl;
+    const regCutoff = Date.now() - this.messageTtl;
+    const sysCutoff = Date.now() - this.systemMessageTtl;
     for (const room of this.rooms.values()) {
       if (room.messages && room.messages.length > 0) {
-        room.messages = room.messages.filter(m => m.timestamp >= cutoff);
+        room.messages = room.messages.filter(m => {
+          if (m.type === 'system') {
+            return m.timestamp >= sysCutoff;
+          }
+          return m.timestamp >= regCutoff;
+        });
       }
     }
   }
@@ -44,13 +52,20 @@ class RoomManager {
     if (!room.hasPassword) return true;
     if (!password) return false;
     const inputHash = this.hashPassword(password);
-    return room.passwordHash === inputHash;
+    if (!room.passwordHash || !inputHash) return false;
+    try {
+      const bufA = Buffer.from(room.passwordHash, 'hex');
+      const bufB = Buffer.from(inputHash, 'hex');
+      return bufA.length === bufB.length && crypto.timingSafeEqual(bufA, bufB);
+    } catch {
+      return false;
+    }
   }
 
   /**
    * Create or retrieve a custom room
    */
-  createRoom({ roomId, name, password, isPrivate = false, hostUser = null, maxUsers = 50 }) {
+  createRoom({ roomId, name, password, isPrivate = false, hostUser = null, maxUsers = 50, settings = {} }) {
     const cleanId = roomId.trim().replace(/[^a-zA-Z0-9_-]/g, '-').toUpperCase();
     
     if (this.rooms.has(cleanId)) {
@@ -72,6 +87,12 @@ class RoomManager {
       createdAt: Date.now(),
       hostId: hostUser ? hostUser.id : null,
       hostName: hostUser ? hostUser.name : null,
+      settings: {
+        allowFileUploads: settings.allowFileUploads ?? true,
+        allowCalls: settings.allowCalls ?? true,
+        allowVoiceNotes: settings.allowVoiceNotes ?? true,
+        onlyHostCanPost: settings.onlyHostCanPost ?? false
+      },
       users: new Map(),
       messages: [],
       typingUsers: new Set()
@@ -97,6 +118,12 @@ class RoomManager {
         isLocal,
         networkType,
         createdAt: Date.now(),
+        settings: {
+          allowFileUploads: true,
+          allowCalls: true,
+          allowVoiceNotes: true,
+          onlyHostCanPost: false
+        },
         users: new Map(),
         messages: [],
         typingUsers: new Set()
@@ -104,6 +131,39 @@ class RoomManager {
     }
 
     return this.rooms.get(roomId);
+  }
+
+  /**
+   * Update room settings (Only by host or creator)
+   */
+  updateRoomSettings(socketId, roomId, updates) {
+    const room = this.rooms.get(roomId);
+    if (!room) return { success: false, error: 'Room not found' };
+
+    const mapping = this.socketMap.get(socketId);
+    const isHost = (room.hostId && mapping && mapping.user.id === room.hostId) || room.users.get(socketId)?.isHost;
+    
+    if (!isHost) {
+      return { success: false, error: 'Only the room host can modify settings.' };
+    }
+
+    if (updates.name !== undefined) room.name = updates.name.trim() || room.name;
+    if (updates.maxUsers !== undefined) room.maxUsers = Number(updates.maxUsers) || 50;
+    
+    if (updates.password !== undefined) {
+      const hasPwd = Boolean(updates.password && updates.password.trim());
+      room.hasPassword = hasPwd;
+      room.passwordHash = hasPwd ? this.hashPassword(updates.password) : null;
+    }
+
+    if (updates.settings) {
+      room.settings = {
+        ...room.settings,
+        ...updates.settings
+      };
+    }
+
+    return { success: true, room: this.getRoomPublicInfo(roomId) };
   }
 
   /**
@@ -119,8 +179,16 @@ class RoomManager {
       hasPassword: room.hasPassword,
       isCustom: room.isCustom || false,
       userCount: room.users.size,
+      maxUsers: room.maxUsers || 50,
       createdAt: room.createdAt,
-      hostName: room.hostName
+      hostName: room.hostName,
+      hostId: room.hostId,
+      settings: room.settings || {
+        allowFileUploads: true,
+        allowCalls: true,
+        allowVoiceNotes: true,
+        onlyHostCanPost: false
+      }
     };
   }
 
@@ -270,13 +338,19 @@ class RoomManager {
   }
 
   /**
-   * Get messages in room (filtering out anything older than 30 mins)
+   * Get messages in room (filtering out system messages older than 25 mins, others older than 30 mins)
    */
   getMessages(roomId) {
     const room = this.rooms.get(roomId);
     if (!room) return [];
-    const cutoff = Date.now() - this.messageTtl;
-    room.messages = room.messages.filter(m => m.timestamp >= cutoff);
+    const regCutoff = Date.now() - this.messageTtl;
+    const sysCutoff = Date.now() - this.systemMessageTtl;
+    room.messages = room.messages.filter(m => {
+      if (m.type === 'system') {
+        return m.timestamp >= sysCutoff;
+      }
+      return m.timestamp >= regCutoff;
+    });
     return room.messages;
   }
 }

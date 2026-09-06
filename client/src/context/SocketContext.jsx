@@ -124,6 +124,11 @@ export function SocketProvider({ children }) {
       );
     });
 
+    // Room Settings Updated
+    socketInstance.on('room_updated', (updatedRoom) => {
+      setCurrentRoom(updatedRoom);
+    });
+
     setSocket(socketInstance);
 
     return () => {
@@ -131,12 +136,20 @@ export function SocketProvider({ children }) {
     };
   }, []);
 
-  // Automatically purge client messages older than 30 minutes
+  // Automatically purge client messages: system notifications after 25 minutes, regular messages after 30 minutes
   useEffect(() => {
     const interval = setInterval(() => {
-      const cutoff = Date.now() - 30 * 60 * 1000;
-      setMessages((prev) => prev.filter((m) => m.timestamp >= cutoff));
-    }, 15 * 1000);
+      const sysCutoff = Date.now() - 25 * 60 * 1000; // 25 minutes for join/leave notifications
+      const regCutoff = Date.now() - 30 * 60 * 1000; // 30 minutes for chat messages
+      setMessages((prev) =>
+        prev.filter((m) => {
+          if (m.type === 'system') {
+            return m.timestamp >= sysCutoff;
+          }
+          return m.timestamp >= regCutoff;
+        })
+      );
+    }, 10 * 1000);
 
     return () => clearInterval(interval);
   }, []);
@@ -250,22 +263,44 @@ export function SocketProvider({ children }) {
   /**
    * Create a new Custom Room
    */
-  const createRoom = ({ roomId, name, password, isPrivate, maxUsers }) => {
+  const createRoom = ({ roomId, name, password, isPrivate, maxUsers, settings }) => {
     return new Promise((resolve) => {
       if (!socket) return resolve({ success: false, error: 'Socket link offline' });
 
       socket.emit(
         'create_room',
-        { roomId, name, password, isPrivate, maxUsers, user },
+        { roomId, name, password, isPrivate, maxUsers, settings, user },
         (response) => {
           if (response && response.success) {
             setCurrentRoom(response.room);
             setMessages([]);
-            setRoomUsers([user]);
+            setRoomUsers([{ ...user, isHost: true }]);
             window.location.hash = `room=${encodeURIComponent(response.room.id)}`;
             resolve({ success: true, room: response.room });
           } else {
             resolve({ success: false, error: response?.error || 'Room creation failed' });
+          }
+        }
+      );
+    });
+  };
+
+  /**
+   * Update Room Settings (Host only)
+   */
+  const updateRoomSettings = ({ name, password, maxUsers, settings }) => {
+    return new Promise((resolve) => {
+      if (!socket || !currentRoom) return resolve({ success: false, error: 'Link offline' });
+
+      socket.emit(
+        'update_room_settings',
+        { roomId: currentRoom.id, name, password, maxUsers, settings },
+        (res) => {
+          if (res && res.success) {
+            setCurrentRoom(res.room);
+            resolve({ success: true, room: res.room });
+          } else {
+            resolve({ success: false, error: res?.error || 'Failed to update settings' });
           }
         }
       );
@@ -314,12 +349,25 @@ export function SocketProvider({ children }) {
   };
 
   /**
+   * Leave current custom room and return to default Local Wi-Fi Network room
+   */
+  const leaveRoom = () => {
+    const defaultRoomId = ipInfo?.autoRoom?.roomId;
+    joinRoom(defaultRoomId || 'auto');
+  };
+
+  /**
    * Update User Profile
    */
   const updateUserProfile = (updates) => {
     const updated = { ...user, ...updates };
     setUser(updated);
   };
+
+  const isHost = Boolean(
+    (currentRoom?.hostId && currentRoom.hostId === user?.id) ||
+    roomUsers.find((u) => u.id === user?.id || u.socketId === socket?.id)?.isHost
+  );
 
   return (
     <SocketContext.Provider
@@ -341,7 +389,10 @@ export function SocketProvider({ children }) {
         logout,
         completeProfileSetup,
         joinRoom,
+        leaveRoom,
         createRoom,
+        updateRoomSettings,
+        isHost,
         sendMessage,
         setTyping,
         toggleReaction,

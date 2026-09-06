@@ -46,7 +46,13 @@ export function getAvatarSvg(seed = 'user') {
     hash = seed.charCodeAt(i) + ((hash << 5) - hash);
   }
   const color = getColorForString(seed);
-  const initials = seed.substring(0, 2).toUpperCase();
+  const rawInitials = seed.substring(0, 2).toUpperCase();
+  const initials = rawInitials
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
 
   const type = Math.abs(hash) % 4;
   let glyph = '';

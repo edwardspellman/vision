@@ -14,18 +14,26 @@ import ImageLightbox from './components/ImageLightbox';
 import InitialLoader from './components/InitialLoader';
 import AuthModal from './components/AuthModal';
 import ProfileSetupModal from './components/ProfileSetupModal';
+import RoomSettingsModal from './components/RoomSettingsModal';
 
 function MainApp() {
-  const { connected, currentRoom, isAuthenticated, showProfileSetup } = useSocket();
+  const { connected, currentRoom, isAuthenticated, showProfileSetup, setShowProfileSetup } = useSocket();
   const [showSplash, setShowSplash] = useState(true);
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
+  const [roomModalTab, setRoomModalTab] = useState('create');
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isRoomSettingsModalOpen, setIsRoomSettingsModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
   const [soundMuted, setSoundMuted] = useState(() => {
     return localStorage.getItem('vision_sound_muted') === 'true';
   });
+
+  const handleOpenRoomModal = (tab = 'create') => {
+    setRoomModalTab(tab);
+    setIsRoomModalOpen(true);
+  };
 
   return (
     <div className="flex flex-col h-screen w-screen bg-[#04060a] text-zinc-300 overflow-hidden font-mono antialiased">
@@ -49,9 +57,10 @@ function MainApp() {
 
       {/* Top Header Navigation */}
       <Header
-        onOpenRoomModal={() => setIsRoomModalOpen(true)}
+        onOpenRoomModal={() => handleOpenRoomModal('create')}
         onOpenShareModal={() => setIsShareModalOpen(true)}
         onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
+        onOpenRoomSettingsModal={() => setIsRoomSettingsModalOpen(true)}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         soundMuted={soundMuted}
         setSoundMuted={setSoundMuted}
@@ -62,15 +71,27 @@ function MainApp() {
         <main className="flex-1 flex flex-col min-w-0 h-full relative">
           <ChatArea
             onOpenShareModal={() => setIsShareModalOpen(true)}
+            onOpenRoomModal={(tab) => handleOpenRoomModal(tab)}
+            onOpenProfileModal={() => setIsSettingsModalOpen(true)}
+            onOpenRoomSettingsModal={() => setIsRoomSettingsModalOpen(true)}
             onImageClick={(url) => setPreviewImage(url)}
           />
-          <MessageInput />
+          <MessageInput
+            onOpenShareModal={() => setIsShareModalOpen(true)}
+            onOpenRoomModal={(tab) => handleOpenRoomModal(tab)}
+            onOpenProfileModal={() => setIsSettingsModalOpen(true)}
+            onOpenRoomSettingsModal={() => setIsRoomSettingsModalOpen(true)}
+            onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+            soundMuted={soundMuted}
+            setSoundMuted={setSoundMuted}
+          />
         </main>
 
         <Sidebar
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
           onOpenShareModal={() => setIsShareModalOpen(true)}
+          onOpenRoomSettingsModal={() => setIsRoomSettingsModalOpen(true)}
         />
       </div>
 
@@ -78,6 +99,12 @@ function MainApp() {
       <RoomModal
         isOpen={isRoomModalOpen}
         onClose={() => setIsRoomModalOpen(false)}
+        initialTab={roomModalTab}
+      />
+
+      <RoomSettingsModal
+        isOpen={isRoomSettingsModalOpen}
+        onClose={() => setIsRoomSettingsModalOpen(false)}
       />
 
       <ShareModal

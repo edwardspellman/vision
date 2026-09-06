@@ -3,6 +3,12 @@ import {
   Wifi, 
   Lock, 
   Share2, 
+  QrCode,
+  LogIn,
+  PlusCircle,
+  User,
+  LogOut,
+  Settings,
   ChevronDown, 
   Upload, 
   MessageSquare
@@ -10,8 +16,8 @@ import {
 import { useSocket } from '../context/SocketContext';
 import MessageItem from './MessageItem';
 
-export default function ChatArea({ onOpenShareModal, onImageClick }) {
-  const { currentRoom, messages, typingUsers, user, sendMessage } = useSocket();
+export default function ChatArea({ onOpenShareModal, onOpenRoomModal, onOpenProfileModal, onOpenRoomSettingsModal, onImageClick }) {
+  const { currentRoom, messages, typingUsers, user, sendMessage, leaveRoom, isHost } = useSocket();
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const messagesEndRef = useRef(null);
@@ -97,8 +103,11 @@ export default function ChatArea({ onOpenShareModal, onImageClick }) {
         className="flex-1 overflow-y-auto px-4 md:px-8 py-5 space-y-1"
       >
         {/* Welcome Room Banner */}
-        <div className="max-w-md mx-auto my-5 p-5 rounded-2xl bg-[#080d17] border border-[#161f30] text-center shadow-lg">
-          <div className="w-10 h-10 rounded-xl bg-[#00ff88]/10 border border-[#00ff88]/30 text-[#00ff88] mx-auto flex items-center justify-center mb-2.5">
+        <div className="max-w-xl mx-auto my-5 p-5 sm:p-6 rounded-2xl bg-[#080d17] border border-[#161f30] text-center shadow-2xl relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[#00ff88]/5 rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-32 h-32 bg-[#00f0ff]/5 rounded-full blur-2xl pointer-events-none" />
+
+          <div className="w-11 h-11 rounded-xl bg-[#00ff88]/10 border border-[#00ff88]/30 text-[#00ff88] mx-auto flex items-center justify-center mb-3 shadow-inner">
             {currentRoom?.hasPassword ? (
               <Lock className="w-5 h-5 text-[#ffb700]" />
             ) : (
@@ -106,23 +115,71 @@ export default function ChatArea({ onOpenShareModal, onImageClick }) {
             )}
           </div>
 
-          <h2 className="text-sm font-bold text-white mb-1">
-            Welcome to {currentRoom?.name || 'Vision Room'}
+          <h2 className="text-base font-extrabold text-white mb-1 tracking-wide">
+            Welcome to {currentRoom?.name || 'Local Wi-Fi Network'}
           </h2>
           
-          <p className="text-xs text-zinc-400 mb-4 max-w-sm mx-auto">
+          <p className="text-xs text-zinc-400 mb-5 max-w-md mx-auto leading-relaxed">
             {currentRoom?.isCustom 
-              ? 'This is a private room. Share the Room ID or QR code to let friends join.'
-              : 'You are connected to this local Wi-Fi room. Anyone on the same network joins automatically.'}
+              ? 'This is a private room. Share the Room ID or QR code with peers to connect.'
+              : 'You are connected to your local network subnet. Anyone on the same Wi-Fi joins automatically.'}
           </p>
 
-          <button
-            onClick={onOpenShareModal}
-            className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-[#00ff88] hover:bg-[#00e67a] text-black text-xs font-bold transition shadow-md"
-          >
-            <Share2 className="w-3.5 h-3.5" />
-            <span>Share Room / QR Code</span>
-          </button>
+          {/* Quick Action Buttons Suite */}
+          <div className={`grid gap-2.5 pt-1 border-t border-[#161f30]/80 ${currentRoom?.isCustom ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'}`}>
+            {/* 1. Share */}
+            <button
+              onClick={onOpenShareModal}
+              className="flex items-center justify-center space-x-2 px-3.5 py-2 rounded-xl bg-[#00ff88]/10 hover:bg-[#00ff88]/20 border border-[#00ff88]/30 text-[#00ff88] text-xs font-bold transition-all transform active:scale-95 shadow-md group/btn"
+              title="Share Room link & QR Code"
+            >
+              <Share2 className="w-4 h-4 shrink-0 group-hover/btn:scale-110 transition-transform text-[#00ff88]" />
+              <span className="truncate">Share</span>
+            </button>
+
+            {/* 2. Create Room */}
+            <button
+              onClick={() => onOpenRoomModal && onOpenRoomModal('create')}
+              className="flex items-center justify-center space-x-2 px-3.5 py-2 rounded-xl bg-[#00f0ff]/10 hover:bg-[#00f0ff]/20 border border-[#00f0ff]/30 text-[#00f0ff] text-xs font-bold transition-all transform active:scale-95 shadow-md group/btn"
+              title="Join an existing room or create a new room"
+            >
+              <PlusCircle className="w-4 h-4 shrink-0 group-hover/btn:rotate-90 transition-transform text-[#00f0ff]" />
+              <span className="truncate">Create Room</span>
+            </button>
+
+            {/* 3. Setting for Host/Admin, Profile for regular users */}
+            {isHost ? (
+              <button
+                onClick={onOpenRoomSettingsModal}
+                className="flex items-center justify-center space-x-2 px-3.5 py-2 rounded-xl bg-[#00ff88]/10 hover:bg-[#00ff88]/20 border border-[#00ff88]/30 text-[#00ff88] text-xs font-bold transition-all transform active:scale-95 shadow-md group/btn"
+                title="Room Settings & Governance (Admin only)"
+              >
+                <Settings className="w-4 h-4 shrink-0 group-hover/btn:rotate-45 transition-transform text-[#00ff88]" />
+                <span className="truncate">Setting</span>
+              </button>
+            ) : (
+              <button
+                onClick={onOpenProfileModal}
+                className="flex items-center justify-center space-x-2 px-3.5 py-2 rounded-xl bg-[#00ff88]/10 hover:bg-[#00ff88]/20 border border-[#00ff88]/30 text-[#00ff88] text-xs font-bold transition-all transform active:scale-95 shadow-md group/btn"
+                title="Edit avatar & display profile"
+              >
+                <User className="w-4 h-4 shrink-0 group-hover/btn:scale-110 transition-transform text-[#00ff88]" />
+                <span className="truncate">Profile</span>
+              </button>
+            )}
+
+            {/* 4. Leave (Shown when user joins a room to return to Local Wi-Fi Network) */}
+            {currentRoom?.isCustom && (
+              <button
+                onClick={leaveRoom}
+                className="flex items-center justify-center space-x-2 px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs font-bold transition-all transform active:scale-95 shadow-md group/btn"
+                title="Leave this room and return to Local Wi-Fi Network"
+              >
+                <LogOut className="w-4 h-4 shrink-0 group-hover/btn:-translate-x-0.5 transition-transform text-rose-400" />
+                <span className="truncate">Leave</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Message Stream */}
